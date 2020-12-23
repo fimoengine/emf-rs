@@ -1,0 +1,5 @@
+[workspace]
+
+members = [
+    "emf-core-base-ffi-rs",
+]

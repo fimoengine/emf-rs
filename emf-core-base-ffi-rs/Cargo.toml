@@ -1,0 +1,10 @@
+[package]
+name = "emf-core-base-ffi-rs"
+version = "0.1.0"
+authors = ["Gabriel Borrelli <gabriel.borrelli@nanoshellsoft.com>"]
+edition = "2018"
+description = "Rust wrapper of the emf-core-base interface"
+license = "MIT OR Apache-2.0"
+categories = ["game-development"]
+
+[dependencies]
