@@ -109,6 +109,26 @@ impl<'a, T: Copy + Sized> From<&'a mut [T]> for Span<'a, T> {
     }
 }
 
+impl <'a, T: Copy + Sized, const N: usize> From<&'a [T; N]> for Span<'a, T> {
+    fn from(array: &'a [T; N]) -> Self {
+        Self {
+            data: array.as_ptr(),
+            length: N,
+            phantom: PhantomData
+        }
+    }
+}
+
+impl <'a, T: Copy + Sized, const N: usize> From<&'a mut [T; N]> for Span<'a, T> {
+    fn from(array: &'a mut [T; N]) -> Self {
+        Self {
+            data: array.as_ptr(),
+            length: N,
+            phantom: PhantomData
+        }
+    }
+}
+
 impl<'a, T: Copy + Sized> From<&'a Vec<T>> for Span<'a, T> {
     fn from(vec: &'a Vec<T>) -> Self {
         Self {
@@ -236,6 +256,16 @@ impl<'a, T: Copy + Sized> From<&'a mut [T]> for MutSpan<'a, T> {
             data: slice.as_mut_ptr(),
             length: slice.len(),
             phantom: PhantomData,
+        }
+    }
+}
+
+impl <'a, T: Copy + Sized, const N: usize> From<&'a mut [T; N]> for MutSpan<'a, T> {
+    fn from(array: &'a mut [T; N]) -> Self {
+        Self {
+            data: array.as_mut_ptr(),
+            length: N,
+            phantom: PhantomData
         }
     }
 }
