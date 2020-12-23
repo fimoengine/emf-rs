@@ -109,22 +109,22 @@ impl<'a, T: Copy + Sized> From<&'a mut [T]> for Span<'a, T> {
     }
 }
 
-impl <'a, T: Copy + Sized, const N: usize> From<&'a [T; N]> for Span<'a, T> {
+impl<'a, T: Copy + Sized, const N: usize> From<&'a [T; N]> for Span<'a, T> {
     fn from(array: &'a [T; N]) -> Self {
         Self {
             data: array.as_ptr(),
             length: N,
-            phantom: PhantomData
+            phantom: PhantomData,
         }
     }
 }
 
-impl <'a, T: Copy + Sized, const N: usize> From<&'a mut [T; N]> for Span<'a, T> {
+impl<'a, T: Copy + Sized, const N: usize> From<&'a mut [T; N]> for Span<'a, T> {
     fn from(array: &'a mut [T; N]) -> Self {
         Self {
             data: array.as_ptr(),
             length: N,
-            phantom: PhantomData
+            phantom: PhantomData,
         }
     }
 }
@@ -260,12 +260,12 @@ impl<'a, T: Copy + Sized> From<&'a mut [T]> for MutSpan<'a, T> {
     }
 }
 
-impl <'a, T: Copy + Sized, const N: usize> From<&'a mut [T; N]> for MutSpan<'a, T> {
+impl<'a, T: Copy + Sized, const N: usize> From<&'a mut [T; N]> for MutSpan<'a, T> {
     fn from(array: &'a mut [T; N]) -> Self {
         Self {
             data: array.as_mut_ptr(),
             length: N,
-            phantom: PhantomData
+            phantom: PhantomData,
         }
     }
 }
