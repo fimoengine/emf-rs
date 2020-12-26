@@ -1,6 +1,10 @@
 #![feature(const_generics)]
 
+mod boolean;
+
 pub mod containers;
+
+pub use boolean::Bool;
 
 #[cfg(test)]
 mod tests {
