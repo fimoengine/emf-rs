@@ -6,12 +6,20 @@ use std::ops::{Deref, DerefMut};
 use std::slice::{Iter, IterMut};
 
 /// A contiguous statically sized array type.
-pub struct StaticVec<T: Copy + Sized, const N: usize> {
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct StaticVec<T, const N: usize>
+where
+    T: Copy + Sized,
+{
     data: [T; N],
     length: usize,
 }
 
-impl<T: Copy + Sized, const N: usize> StaticVec<T, N> {
+impl<T, const N: usize> StaticVec<T, N>
+where
+    T: Copy + Sized,
+{
     /// Returns an unsafe mutable pointer to the vector's buffer.
     pub fn as_mut_ptr(&mut self) -> *mut T {
         self.data.as_mut_ptr()
@@ -128,25 +136,37 @@ impl<T: Copy + Sized, const N: usize> StaticVec<T, N> {
     }
 }
 
-impl<T: Copy + Sized, const N: usize> AsMut<[T]> for StaticVec<T, N> {
+impl<T, const N: usize> AsMut<[T]> for StaticVec<T, N>
+where
+    T: Copy + Sized,
+{
     fn as_mut(&mut self) -> &mut [T] {
         self.as_mut_slice()
     }
 }
 
-impl<T: Copy + Sized, const N: usize> AsRef<[T]> for StaticVec<T, N> {
+impl<T, const N: usize> AsRef<[T]> for StaticVec<T, N>
+where
+    T: Copy + Sized,
+{
     fn as_ref(&self) -> &[T] {
         self.as_slice()
     }
 }
 
-impl<T: Copy + Sized + Debug, const N: usize> Debug for StaticVec<T, N> {
+impl<T, const N: usize> Debug for StaticVec<T, N>
+where
+    T: Copy + Sized + Debug,
+{
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.as_slice().fmt(f)
     }
 }
 
-impl<T: Copy + Sized, const N: usize> Deref for StaticVec<T, N> {
+impl<T, const N: usize> Deref for StaticVec<T, N>
+where
+    T: Copy + Sized,
+{
     type Target = [T];
 
     fn deref(&self) -> &Self::Target {
@@ -154,21 +174,30 @@ impl<T: Copy + Sized, const N: usize> Deref for StaticVec<T, N> {
     }
 }
 
-impl<T: Copy + Sized, const N: usize> DerefMut for StaticVec<T, N> {
+impl<T, const N: usize> DerefMut for StaticVec<T, N>
+where
+    T: Copy + Sized,
+{
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.as_mut_slice()
     }
 }
 
-impl<T: Copy + Sized + PartialEq, const N: usize> PartialEq for StaticVec<T, N> {
+impl<T, const N: usize> PartialEq for StaticVec<T, N>
+where
+    T: Copy + Sized + PartialEq,
+{
     fn eq(&self, other: &Self) -> bool {
         self.as_slice() == other.as_slice()
     }
 }
 
-impl<T: Copy + Sized + PartialEq + Eq, const N: usize> Eq for StaticVec<T, N> {}
+impl<T, const N: usize> Eq for StaticVec<T, N> where T: Copy + Sized + PartialEq + Eq {}
 
-impl<T: Copy + Sized, const N: usize> From<&'_ [T]> for StaticVec<T, N> {
+impl<T, const N: usize> From<&'_ [T]> for StaticVec<T, N>
+where
+    T: Copy + Sized,
+{
     fn from(slice: &[T]) -> Self {
         let min_size = min(N, slice.len());
         unsafe {
@@ -180,7 +209,10 @@ impl<T: Copy + Sized, const N: usize> From<&'_ [T]> for StaticVec<T, N> {
     }
 }
 
-impl<T: Copy + Sized, const N: usize> From<&'_ mut [T]> for StaticVec<T, N> {
+impl<T, const N: usize> From<&'_ mut [T]> for StaticVec<T, N>
+where
+    T: Copy + Sized,
+{
     fn from(slice: &mut [T]) -> Self {
         let min_size = min(N, slice.len());
         unsafe {
@@ -198,25 +230,37 @@ impl<const N: usize> From<&'_ str> for StaticVec<u8, N> {
     }
 }
 
-impl<T: Copy + Sized, const N: usize> From<&'_ Vec<T>> for StaticVec<T, N> {
+impl<T, const N: usize> From<&'_ Vec<T>> for StaticVec<T, N>
+where
+    T: Copy + Sized,
+{
     fn from(vec: &Vec<T>) -> Self {
         Self::from(vec.as_slice())
     }
 }
 
-impl<T: Copy + Sized, const N: usize> From<&'_ mut Vec<T>> for StaticVec<T, N> {
+impl<T, const N: usize> From<&'_ mut Vec<T>> for StaticVec<T, N>
+where
+    T: Copy + Sized,
+{
     fn from(vec: &mut Vec<T>) -> Self {
         Self::from(vec.as_slice())
     }
 }
 
-impl<T: Copy + Sized, const N: usize, const M: usize> From<[T; M]> for StaticVec<T, N> {
+impl<T, const N: usize, const M: usize> From<[T; M]> for StaticVec<T, N>
+where
+    T: Copy + Sized,
+{
     fn from(arr: [T; M]) -> Self {
         Self::from(&arr[..M])
     }
 }
 
-impl<'a, T: Copy + Sized, const N: usize> IntoIterator for &'a StaticVec<T, N> {
+impl<'a, T, const N: usize> IntoIterator for &'a StaticVec<T, N>
+where
+    T: Copy + Sized,
+{
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
@@ -225,7 +269,10 @@ impl<'a, T: Copy + Sized, const N: usize> IntoIterator for &'a StaticVec<T, N> {
     }
 }
 
-impl<'a, T: Copy + Sized, const N: usize> IntoIterator for &'a mut StaticVec<T, N> {
+impl<'a, T, const N: usize> IntoIterator for &'a mut StaticVec<T, N>
+where
+    T: Copy + Sized,
+{
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 

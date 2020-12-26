@@ -1,4 +1,4 @@
-#![feature(const_generics)]
+#![feature(min_const_generics)]
 
 mod boolean;
 

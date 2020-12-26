@@ -17,7 +17,10 @@ where
     phantom: PhantomData<&'a T>,
 }
 
-impl<T: Copy + Sized> Span<'_, T> {
+impl<T> Span<'_, T>
+where
+    T: Copy + Sized,
+{
     /// Create a new empty span.
     pub fn new() -> Self {
         Self {
@@ -61,19 +64,28 @@ impl<T: Copy + Sized> Span<'_, T> {
     }
 }
 
-impl<T: Copy + Sized> AsRef<[T]> for Span<'_, T> {
+impl<T> AsRef<[T]> for Span<'_, T>
+where
+    T: Copy + Sized,
+{
     fn as_ref(&self) -> &[T] {
         unsafe { std::slice::from_raw_parts(self.data, self.length) }
     }
 }
 
-impl<T: Copy + Sized> Default for Span<'_, T> {
+impl<T> Default for Span<'_, T>
+where
+    T: Copy + Sized,
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: Copy + Sized> Deref for Span<'_, T> {
+impl<T> Deref for Span<'_, T>
+where
+    T: Copy + Sized,
+{
     type Target = [T];
 
     fn deref(&self) -> &Self::Target {
@@ -81,15 +93,21 @@ impl<T: Copy + Sized> Deref for Span<'_, T> {
     }
 }
 
-impl<T: Copy + Sized + PartialEq> PartialEq for Span<'_, T> {
+impl<T> PartialEq for Span<'_, T>
+where
+    T: Copy + Sized + PartialEq,
+{
     fn eq(&self, other: &Self) -> bool {
         self.as_ref() == other.as_ref()
     }
 }
 
-impl<T: Copy + Sized + PartialEq + Eq> Eq for Span<'_, T> {}
+impl<T> Eq for Span<'_, T> where T: Copy + Sized + PartialEq + Eq {}
 
-impl<'a, T: Copy + Sized> From<&'a [T]> for Span<'a, T> {
+impl<'a, T> From<&'a [T]> for Span<'a, T>
+where
+    T: Copy + Sized,
+{
     fn from(slice: &[T]) -> Self {
         Self {
             data: slice.as_ptr(),
@@ -99,7 +117,10 @@ impl<'a, T: Copy + Sized> From<&'a [T]> for Span<'a, T> {
     }
 }
 
-impl<'a, T: Copy + Sized> From<&'a mut [T]> for Span<'a, T> {
+impl<'a, T> From<&'a mut [T]> for Span<'a, T>
+where
+    T: Copy + Sized,
+{
     fn from(slice: &mut [T]) -> Self {
         Self {
             data: slice.as_ptr(),
@@ -109,7 +130,10 @@ impl<'a, T: Copy + Sized> From<&'a mut [T]> for Span<'a, T> {
     }
 }
 
-impl<'a, T: Copy + Sized, const N: usize> From<&'a [T; N]> for Span<'a, T> {
+impl<'a, T, const N: usize> From<&'a [T; N]> for Span<'a, T>
+where
+    T: Copy + Sized,
+{
     fn from(array: &'a [T; N]) -> Self {
         Self {
             data: array.as_ptr(),
@@ -119,7 +143,10 @@ impl<'a, T: Copy + Sized, const N: usize> From<&'a [T; N]> for Span<'a, T> {
     }
 }
 
-impl<'a, T: Copy + Sized, const N: usize> From<&'a mut [T; N]> for Span<'a, T> {
+impl<'a, T, const N: usize> From<&'a mut [T; N]> for Span<'a, T>
+where
+    T: Copy + Sized,
+{
     fn from(array: &'a mut [T; N]) -> Self {
         Self {
             data: array.as_ptr(),
@@ -129,7 +156,10 @@ impl<'a, T: Copy + Sized, const N: usize> From<&'a mut [T; N]> for Span<'a, T> {
     }
 }
 
-impl<'a, T: Copy + Sized> From<&'a Vec<T>> for Span<'a, T> {
+impl<'a, T> From<&'a Vec<T>> for Span<'a, T>
+where
+    T: Copy + Sized,
+{
     fn from(vec: &'a Vec<T>) -> Self {
         Self {
             data: vec.as_ptr(),
@@ -139,7 +169,10 @@ impl<'a, T: Copy + Sized> From<&'a Vec<T>> for Span<'a, T> {
     }
 }
 
-impl<'a, T: Copy + Sized> From<&'a mut Vec<T>> for Span<'a, T> {
+impl<'a, T> From<&'a mut Vec<T>> for Span<'a, T>
+where
+    T: Copy + Sized,
+{
     fn from(vec: &'a mut Vec<T>) -> Self {
         Self {
             data: vec.as_ptr(),
@@ -149,7 +182,10 @@ impl<'a, T: Copy + Sized> From<&'a mut Vec<T>> for Span<'a, T> {
     }
 }
 
-impl<'a, T: Copy + Sized> IntoIterator for &'a Span<'_, T> {
+impl<'a, T> IntoIterator for &'a Span<'_, T>
+where
+    T: Copy + Sized,
+{
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
@@ -170,7 +206,10 @@ where
     phantom: PhantomData<&'a T>,
 }
 
-impl<T: Copy + Sized> MutSpan<'_, T> {
+impl<T> MutSpan<'_, T>
+where
+    T: Copy + Sized,
+{
     /// Creates a new empty span.
     pub fn new() -> Self {
         Self {
@@ -210,25 +249,37 @@ impl<T: Copy + Sized> MutSpan<'_, T> {
     }
 }
 
-impl<T: Copy + Sized> AsMut<[T]> for MutSpan<'_, T> {
+impl<T> AsMut<[T]> for MutSpan<'_, T>
+where
+    T: Copy + Sized,
+{
     fn as_mut(&mut self) -> &mut [T] {
         unsafe { std::slice::from_raw_parts_mut(self.data, self.length) }
     }
 }
 
-impl<T: Copy + Sized> AsRef<[T]> for MutSpan<'_, T> {
+impl<T> AsRef<[T]> for MutSpan<'_, T>
+where
+    T: Copy + Sized,
+{
     fn as_ref(&self) -> &[T] {
         unsafe { std::slice::from_raw_parts(self.data, self.length) }
     }
 }
 
-impl<T: Copy + Sized> Default for MutSpan<'_, T> {
+impl<T> Default for MutSpan<'_, T>
+where
+    T: Copy + Sized,
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: Copy + Sized> Deref for MutSpan<'_, T> {
+impl<T> Deref for MutSpan<'_, T>
+where
+    T: Copy + Sized,
+{
     type Target = [T];
 
     fn deref(&self) -> &Self::Target {
@@ -236,21 +287,30 @@ impl<T: Copy + Sized> Deref for MutSpan<'_, T> {
     }
 }
 
-impl<T: Copy + Sized> DerefMut for MutSpan<'_, T> {
+impl<T> DerefMut for MutSpan<'_, T>
+where
+    T: Copy + Sized,
+{
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.as_mut()
     }
 }
 
-impl<T: Copy + Sized + PartialEq> PartialEq for MutSpan<'_, T> {
+impl<T> PartialEq for MutSpan<'_, T>
+where
+    T: Copy + Sized + PartialEq,
+{
     fn eq(&self, other: &Self) -> bool {
         self.as_ref() == other.as_ref()
     }
 }
 
-impl<T: Copy + Sized + PartialEq + Eq> Eq for MutSpan<'_, T> {}
+impl<T> Eq for MutSpan<'_, T> where T: Copy + Sized + PartialEq + Eq {}
 
-impl<'a, T: Copy + Sized> From<&'a mut [T]> for MutSpan<'a, T> {
+impl<'a, T> From<&'a mut [T]> for MutSpan<'a, T>
+where
+    T: Copy + Sized,
+{
     fn from(slice: &mut [T]) -> Self {
         Self {
             data: slice.as_mut_ptr(),
@@ -260,7 +320,10 @@ impl<'a, T: Copy + Sized> From<&'a mut [T]> for MutSpan<'a, T> {
     }
 }
 
-impl<'a, T: Copy + Sized, const N: usize> From<&'a mut [T; N]> for MutSpan<'a, T> {
+impl<'a, T, const N: usize> From<&'a mut [T; N]> for MutSpan<'a, T>
+where
+    T: Copy + Sized,
+{
     fn from(array: &'a mut [T; N]) -> Self {
         Self {
             data: array.as_mut_ptr(),
@@ -270,7 +333,10 @@ impl<'a, T: Copy + Sized, const N: usize> From<&'a mut [T; N]> for MutSpan<'a, T
     }
 }
 
-impl<'a, T: Copy + Sized> From<&'a mut Vec<T>> for MutSpan<'a, T> {
+impl<'a, T> From<&'a mut Vec<T>> for MutSpan<'a, T>
+where
+    T: Copy + Sized,
+{
     fn from(vec: &'a mut Vec<T>) -> Self {
         Self {
             data: vec.as_mut_ptr(),
@@ -280,7 +346,10 @@ impl<'a, T: Copy + Sized> From<&'a mut Vec<T>> for MutSpan<'a, T> {
     }
 }
 
-impl<'a, T: Copy + Sized> IntoIterator for &'a MutSpan<'_, T> {
+impl<'a, T> IntoIterator for &'a MutSpan<'_, T>
+where
+    T: Copy + Sized,
+{
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
@@ -289,7 +358,10 @@ impl<'a, T: Copy + Sized> IntoIterator for &'a MutSpan<'_, T> {
     }
 }
 
-impl<'a, T: Copy + Sized> IntoIterator for &'a mut MutSpan<'_, T> {
+impl<'a, T> IntoIterator for &'a mut MutSpan<'_, T>
+where
+    T: Copy + Sized,
+{
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 
