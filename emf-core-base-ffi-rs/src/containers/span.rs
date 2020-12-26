@@ -1,5 +1,6 @@
+//! Mutable and immutable span implementation.
 #![allow(dead_code)]
-///! Mutable and immutable span implementation.
+
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::ptr::{null, null_mut};

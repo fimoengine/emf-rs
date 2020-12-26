@@ -1,4 +1,5 @@
-///! Containers used by the `emf-core-base` interface.
+//! Containers used by the `emf-core-base` interface.
+
 mod optional;
 mod result;
 mod span;

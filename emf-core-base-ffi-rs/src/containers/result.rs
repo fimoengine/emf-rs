@@ -1,5 +1,6 @@
+//! The `Result` data type.
 #![allow(dead_code)]
-///! The `Result` data type.
+
 use crate::Bool;
 use std::cmp::Ordering;
 use std::cmp::Ordering::{Greater, Less};

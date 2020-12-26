@@ -1,5 +1,6 @@
+//! Implementation of a statically sized vector.
 #![allow(dead_code)]
-///! Implementation of a statically sized vector.
+
 use std::cmp::min;
 use std::fmt::{Debug, Formatter};
 use std::ops::{Deref, DerefMut};

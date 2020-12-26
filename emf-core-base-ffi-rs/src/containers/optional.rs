@@ -1,5 +1,6 @@
+//! Module implementing the `Optional` type.
 #![allow(dead_code)]
-///! Module implementing the `Optional` type.
+
 use crate::Bool;
 use std::fmt::{Debug, Formatter};
 
