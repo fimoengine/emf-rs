@@ -149,6 +149,14 @@ where
             false => op(unsafe { self.data.error }),
         }
     }
+
+    /// Maps a `Result<T, E>` to `std::result::Result<T, E>`.
+    pub fn to_native(self) -> std::result::Result<T, E> {
+        match self.is_ok() {
+            true => Ok(unsafe { self.data.result }),
+            false => Err(unsafe { self.data.error }),
+        }
+    }
 }
 
 impl<T, E> Result<T, E>
@@ -291,5 +299,25 @@ where
 {
     fn cmp(&self, other: &Self) -> Ordering {
         self.partial_cmp(&other).unwrap()
+    }
+}
+
+impl<T, E> From<std::result::Result<T, E>> for Result<T, E>
+where
+    T: Copy + Sized,
+    E: Copy + Sized,
+{
+    fn from(res: std::result::Result<T, E>) -> Self {
+        res.map_or_else(|err| Self::new_err(err), |val| Self::new_ok(val))
+    }
+}
+
+impl<T, E> From<Result<T, E>> for std::result::Result<T, E>
+where
+    T: Copy + Sized,
+    E: Copy + Sized,
+{
+    fn from(res: Result<T, E>) -> Self {
+        res.to_native()
     }
 }
