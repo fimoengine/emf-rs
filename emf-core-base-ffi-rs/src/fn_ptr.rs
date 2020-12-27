@@ -1,6 +1,6 @@
 //! Function types specified by the `emf-core-base` interface.
 
-use crate::containers::{MutSpan, Optional, Span};
+use crate::containers::{MutSpan, NonNullConst, Optional, Span};
 use crate::sys::SyncHandlerInterface;
 use crate::version::{ReleaseType, Version, VersionError};
 use crate::{BaseT, Bool, FnId};
@@ -36,7 +36,7 @@ pub type SysGetFunctionFn = extern "C" fn(base_module: *mut BaseT, fn_id: FnId) 
 /// Function pointer to the
 /// [emf_cbase_sys_get_sync_handler](crate::sys::emf_cbase_sys_get_sync_handler) function.
 pub type SysGetSyncHandlerFn =
-    extern "C" fn(base_module: *mut BaseT) -> *const SyncHandlerInterface;
+    extern "C" fn(base_module: *mut BaseT) -> NonNullConst<SyncHandlerInterface>;
 
 /// Function pointer to the
 /// [emf_cbase_sys_set_sync_handler](crate::sys::emf_cbase_sys_set_sync_handler) function.
@@ -76,21 +76,21 @@ pub type VersionConstructFullFn = extern "C" fn(
 /// function.
 pub type VersionConstructFromStringFn = extern "C" fn(
     base_module: *mut BaseT,
-    version_string: *const Span<'_, c_char>,
+    version_string: NonNullConst<Span<'_, c_char>>,
 ) -> Result<Version, VersionError>;
 
 /// Function pointer to the
 /// [emf_cbase_version_representation_is_valid](crate::version::emf_cbase_version_representation_is_valid)
 /// function.
 pub type VersionRepresentationIsValidFn =
-    extern "C" fn(base_module: *mut BaseT, version_string: *const Span<'_, c_char>) -> Bool;
+    extern "C" fn(base_module: *mut BaseT, version_string: NonNullConst<Span<'_, c_char>>) -> Bool;
 
 /// Function pointer to the
 /// [emf_cbase_version_get_short_representation](crate::version::emf_cbase_version_get_short_representation)
 /// function.
 pub type VersionGetShortRepresentationFn = extern "C" fn(
     base_module: *mut BaseT,
-    version: *const Version,
+    version: NonNullConst<Version>,
     buffer: NonNull<MutSpan<'_, c_char>>,
 ) -> Result<usize, VersionError>;
 
@@ -98,14 +98,14 @@ pub type VersionGetShortRepresentationFn = extern "C" fn(
 /// [emf_cbase_version_get_short_representation_length](crate::version::emf_cbase_version_get_short_representation_length)
 /// function.
 pub type VersionGetShortRepresentationLengthFn =
-    extern "C" fn(base_module: *mut BaseT, version: *const Version) -> usize;
+    extern "C" fn(base_module: *mut BaseT, version: NonNullConst<Version>) -> usize;
 
 /// Function pointer to the
 /// [emf_cbase_version_get_long_representation](crate::version::emf_cbase_version_get_long_representation)
 /// function.
 pub type VersionGetLongRepresentationFn = extern "C" fn(
     base_module: *mut BaseT,
-    version: *const Version,
+    version: NonNullConst<Version>,
     buffer: NonNull<MutSpan<'_, c_char>>,
 ) -> Result<usize, VersionError>;
 
@@ -113,14 +113,14 @@ pub type VersionGetLongRepresentationFn = extern "C" fn(
 /// [emf_cbase_version_get_long_representation_length](crate::version::emf_cbase_version_get_long_representation_length)
 /// function.
 pub type VersionGetLongRepresentationLengthFn =
-    extern "C" fn(base_module: *mut BaseT, version: *const Version) -> usize;
+    extern "C" fn(base_module: *mut BaseT, version: NonNullConst<Version>) -> usize;
 
 /// Function pointer to the
 /// [emf_cbase_version_get_full_representation](crate::version::emf_cbase_version_get_full_representation)
 /// function.
 pub type VersionGetFullRepresentationFn = extern "C" fn(
     base_module: *mut BaseT,
-    version: *const Version,
+    version: NonNullConst<Version>,
     buffer: NonNull<MutSpan<'_, c_char>>,
 ) -> Result<usize, VersionError>;
 
@@ -128,24 +128,36 @@ pub type VersionGetFullRepresentationFn = extern "C" fn(
 /// [emf_cbase_version_get_full_representation_length](crate::version::emf_cbase_version_get_full_representation_length)
 /// function.
 pub type VersionGetFullRepresentationLengthFn =
-    extern "C" fn(base_module: *mut BaseT, version: *const Version) -> usize;
+    extern "C" fn(base_module: *mut BaseT, version: NonNullConst<Version>) -> usize;
 
 /// Function pointer to the
 /// [emf_cbase_version_compare](crate::version::emf_cbase_version_compare) function.
-pub type VersionCompareFn =
-    extern "C" fn(base_module: *mut BaseT, lhs: *const Version, rhs: *const Version) -> i32;
+pub type VersionCompareFn = extern "C" fn(
+    base_module: *mut BaseT,
+    lhs: NonNullConst<Version>,
+    rhs: NonNullConst<Version>,
+) -> i32;
 
 /// Function pointer to the
 /// [emf_cbase_version_compare_weak](crate::version::emf_cbase_version_compare_weak) function.
-pub type VersionCompareWeakFn =
-    extern "C" fn(base_module: *mut BaseT, lhs: *const Version, rhs: *const Version) -> i32;
+pub type VersionCompareWeakFn = extern "C" fn(
+    base_module: *mut BaseT,
+    lhs: NonNullConst<Version>,
+    rhs: NonNullConst<Version>,
+) -> i32;
 
 /// Function pointer to the
 /// [emf_cbase_version_compare_strong](crate::version::emf_cbase_version_compare_strong) function.
-pub type VersionCompareStrongFn =
-    extern "C" fn(base_module: *mut BaseT, lhs: *const Version, rhs: *const Version) -> i32;
+pub type VersionCompareStrongFn = extern "C" fn(
+    base_module: *mut BaseT,
+    lhs: NonNullConst<Version>,
+    rhs: NonNullConst<Version>,
+) -> i32;
 
 /// Function pointer to the
 /// [emf_cbase_version_is_compatible](crate::version::emf_cbase_version_is_compatible) function.
-pub type VersionIsCompatibleFn =
-    extern "C" fn(base_module: *mut BaseT, lhs: *const Version, rhs: *const Version) -> Bool;
+pub type VersionIsCompatibleFn = extern "C" fn(
+    base_module: *mut BaseT,
+    lhs: NonNullConst<Version>,
+    rhs: NonNullConst<Version>,
+) -> Bool;

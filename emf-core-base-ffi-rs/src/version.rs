@@ -20,7 +20,7 @@
 //!
 //!     let v2_str = "1.2.3-rc.5+54845652";
 //!     let v2_buff = Span::from(v2_str).as_c_char_span();
-//!     let v2_res = emf_cbase_version_construct_from_string(&v2_buff);
+//!     let v2_res = emf_cbase_version_construct_from_string((&v2_buff).into());
 //!
 //!     let v2 = match v2_res.to_native() {
 //!         Ok(v2) => v2,
@@ -32,11 +32,11 @@
 //!         }
 //!     };
 //!
-//!     assert_eq!(emf_cbase_version_compare_weak(&v1, &v2), 0);
+//!     assert_eq!(emf_cbase_version_compare_weak((&v1).into(), (&v2).into()), 0);
 //! }
 //! ```
 
-use crate::containers::{MutSpan, Result, Span};
+use crate::containers::{MutSpan, NonNullConst, Result, Span};
 use crate::Bool;
 use std::os::raw::c_char;
 use std::ptr::NonNull;
@@ -72,6 +72,7 @@ pub struct Version {
 ///
 /// The values `0-99` are reserved for future use.
 #[repr(C)]
+#[non_exhaustive]
 #[derive(Copy, Clone)]
 pub enum VersionError {
     InvalidString = 0,
@@ -119,56 +120,18 @@ extern "C" {
     ///
     /// The function fails if `version_string` is not of the form
     /// `"Major.Minor.Patch(-((pre-)?alpha|beta|rc).Release)?\+Build"`.
-    ///
-    /// # Undefined Behaviour
-    ///
-    /// The caller must ensure that the following preconditions hold:
-    ///
-    /// ```no_run
-    /// # use emf_core_base_ffi_rs::containers::Span;
-    /// # use std::os::raw::c_char;
-    /// # use std::ptr::null;
-    /// # let version_string: *const Span<'static, c_char> = null();
-    /// assert_ne!(
-    ///     version_string,
-    ///     null()
-    /// );
-    /// assert_ne!(
-    ///     unsafe { (*version_string).is_empty() },
-    ///     true
-    /// );
-    /// ```
     #[must_use]
     pub fn emf_cbase_version_construct_from_string(
-        version_string: *const Span<'_, c_char>,
+        version_string: NonNullConst<Span<'_, c_char>>,
     ) -> Result<Version, VersionError>;
 
     /// Checks weather the version string is valid.
     ///
     /// The string is valid if it has the form
     /// `"Major.Minor.Patch(-((pre-)?alpha|beta|rc).Release)?\+Build"`.
-    ///
-    /// # Undefined Behaviour
-    ///
-    /// The caller must ensure that the following preconditions hold:
-    ///
-    /// ```no_run
-    /// # use emf_core_base_ffi_rs::containers::Span;
-    /// # use std::os::raw::c_char;
-    /// # use std::ptr::null;
-    /// # let version_string: *const Span<'static, c_char> = null();
-    /// assert_ne!(
-    ///     version_string,
-    ///     null()
-    /// );
-    /// assert_ne!(
-    ///     unsafe { (*version_string).is_empty() },
-    ///     true
-    /// );
-    /// ```
     #[must_use]
     pub fn emf_cbase_version_representation_is_valid(
-        version_string: *const Span<'_, c_char>,
+        version_string: NonNullConst<Span<'_, c_char>>,
     ) -> Bool;
 
     /// Represents the version as a string.
@@ -178,45 +141,19 @@ extern "C" {
     /// # Failure
     ///
     /// The function can fail if `buffer` is too small.
-    ///
-    /// # Undefined Behaviour
-    ///
-    /// The caller must ensure that the following preconditions hold:
-    ///
-    /// ```no_run
-    /// # use emf_core_base_ffi_rs::version::Version;
-    /// # use std::ptr::null;
-    /// # let version: *const Version = null();
-    /// assert_ne!(
-    ///     version,
-    ///     null()
-    /// );
-    /// ```
     #[must_use]
     pub fn emf_cbase_version_get_short_representation(
-        version: *const Version,
+        version: NonNullConst<Version>,
         buffer: NonNull<MutSpan<'_, c_char>>,
     ) -> Result<usize, VersionError>;
 
     /// Computes the length of the version string.
     ///
     /// Computes the minimum length a string of the form `"Major.Minor.Patch"` needs.
-    ///
-    /// # Undefined Behaviour
-    ///
-    /// The caller must ensure that the following preconditions hold:
-    ///
-    /// ```no_run
-    /// # use emf_core_base_ffi_rs::version::Version;
-    /// # use std::ptr::null;
-    /// # let version: *const Version = null();
-    /// assert_ne!(
-    ///     version,
-    ///     null()
-    /// );
-    /// ```
     #[must_use]
-    pub fn emf_cbase_version_get_short_representation_length(version: *const Version) -> usize;
+    pub fn emf_cbase_version_get_short_representation_length(
+        version: NonNullConst<Version>,
+    ) -> usize;
 
     /// Represents the version as a string.
     ///
@@ -225,23 +162,9 @@ extern "C" {
     /// # Failure
     ///
     /// The function can fail if `buffer` is too small.
-    ///
-    /// # Undefined Behaviour
-    ///
-    /// The caller must ensure that the following preconditions hold:
-    ///
-    /// ```no_run
-    /// # use emf_core_base_ffi_rs::version::Version;
-    /// # use std::ptr::null;
-    /// # let version: *const Version = null();
-    /// assert_ne!(
-    ///     version,
-    ///     null()
-    /// );
-    /// ```
     #[must_use]
     pub fn emf_cbase_version_get_long_representation(
-        version: *const Version,
+        version: NonNullConst<Version>,
         buffer: NonNull<MutSpan<'_, c_char>>,
     ) -> Result<usize, VersionError>;
 
@@ -249,22 +172,10 @@ extern "C" {
     ///
     /// Computes the minimum length a string of the form
     /// `"Major.Minor.Patch(-((pre-)?alpha|beta|rc).Release)?"` needs.
-    ///
-    /// # Undefined Behaviour
-    ///
-    /// The caller must ensure that the following preconditions hold:
-    ///
-    /// ```no_run
-    /// # use emf_core_base_ffi_rs::version::Version;
-    /// # use std::ptr::null;
-    /// # let version: *const Version = null();
-    /// assert_ne!(
-    ///     version,
-    ///     null()
-    /// );
-    /// ```
     #[must_use]
-    pub fn emf_cbase_version_get_long_representation_length(version: *const Version) -> usize;
+    pub fn emf_cbase_version_get_long_representation_length(
+        version: NonNullConst<Version>,
+    ) -> usize;
 
     /// Represents the version as a string.
     ///
@@ -273,23 +184,9 @@ extern "C" {
     /// # Failure
     ///
     /// The function can fail if `buffer` is too small.
-    ///
-    /// # Undefined Behaviour
-    ///
-    /// The caller must ensure that the following preconditions hold:
-    ///
-    /// ```no_run
-    /// # use emf_core_base_ffi_rs::version::Version;
-    /// # use std::ptr::null;
-    /// # let version: *const Version = null();
-    /// assert_ne!(
-    ///     version,
-    ///     null()
-    /// );
-    /// ```
     #[must_use]
     pub fn emf_cbase_version_get_full_representation(
-        version: *const Version,
+        version: NonNullConst<Version>,
         buffer: NonNull<MutSpan<'_, c_char>>,
     ) -> Result<usize, VersionError>;
 
@@ -297,22 +194,10 @@ extern "C" {
     ///
     /// Computes the minimum length a string of the form
     /// `"Major.Minor.Patch(-((pre-)?alpha|beta|rc).Release)?\+Build"` needs.
-    ///
-    /// # Undefined Behaviour
-    ///
-    /// The caller must ensure that the following preconditions hold:
-    ///
-    /// ```no_run
-    /// # use emf_core_base_ffi_rs::version::Version;
-    /// # use std::ptr::null;
-    /// # let version: *const Version = null();
-    /// assert_ne!(
-    ///     version,
-    ///     null()
-    /// );
-    /// ```
     #[must_use]
-    pub fn emf_cbase_version_get_full_representation_length(version: *const Version) -> usize;
+    pub fn emf_cbase_version_get_full_representation_length(
+        version: NonNullConst<Version>,
+    ) -> usize;
 
     /// Compares two versions.
     ///
@@ -324,27 +209,9 @@ extern "C" {
     /// Returns `-1` if `lhs > rhs`.
     /// Returns `0` if `lhs == rhs`.
     /// Returns `1` if `lhs < rhs`.
-    ///
-    /// # Undefined Behaviour
-    ///
-    /// The caller must ensure that the following preconditions hold:
-    ///
-    /// ```no_run
-    /// # use emf_core_base_ffi_rs::version::Version;
-    /// # use std::ptr::null;
-    /// # let lhs: *const Version = null();
-    /// # let rhs: *const Version = null();
-    /// assert_ne!(
-    ///     lhs,
-    ///     null()
-    /// );
-    /// assert_ne!(
-    ///     rhs,
-    ///     null()
-    /// );
-    /// ```
     #[must_use]
-    pub fn emf_cbase_version_compare(lhs: *const Version, rhs: *const Version) -> i32;
+    pub fn emf_cbase_version_compare(lhs: NonNullConst<Version>, rhs: NonNullConst<Version>)
+        -> i32;
 
     /// Compares two versions.
     ///
@@ -355,27 +222,11 @@ extern "C" {
     /// Returns `-1` if `lhs > rhs`.
     /// Returns `0` if `lhs == rhs`.
     /// Returns `1` if `lhs < rhs`.
-    ///
-    /// # Undefined Behaviour
-    ///
-    /// The caller must ensure that the following preconditions hold:
-    ///
-    /// ```no_run
-    /// # use emf_core_base_ffi_rs::version::Version;
-    /// # use std::ptr::null;
-    /// # let lhs: *const Version = null();
-    /// # let rhs: *const Version = null();
-    /// assert_ne!(
-    ///     lhs,
-    ///     null()
-    /// );
-    /// assert_ne!(
-    ///     rhs,
-    ///     null()
-    /// );
-    /// ```
     #[must_use]
-    pub fn emf_cbase_version_compare_weak(lhs: *const Version, rhs: *const Version) -> i32;
+    pub fn emf_cbase_version_compare_weak(
+        lhs: NonNullConst<Version>,
+        rhs: NonNullConst<Version>,
+    ) -> i32;
 
     /// Compares two versions.
     ///
@@ -387,27 +238,11 @@ extern "C" {
     /// Returns `-1` if `lhs > rhs`.
     /// Returns `0` if `lhs == rhs`.
     /// Returns `1` if `lhs < rhs`.
-    ///
-    /// # Undefined Behaviour
-    ///
-    /// The caller must ensure that the following preconditions hold:
-    ///
-    /// ```no_run
-    /// # use emf_core_base_ffi_rs::version::Version;
-    /// # use std::ptr::null;
-    /// # let lhs: *const Version = null();
-    /// # let rhs: *const Version = null();
-    /// assert_ne!(
-    ///     lhs,
-    ///     null()
-    /// );
-    /// assert_ne!(
-    ///     rhs,
-    ///     null()
-    /// );
-    /// ```
     #[must_use]
-    pub fn emf_cbase_version_compare_strong(lhs: *const Version, rhs: *const Version) -> i32;
+    pub fn emf_cbase_version_compare_strong(
+        lhs: NonNullConst<Version>,
+        rhs: NonNullConst<Version>,
+    ) -> i32;
 
     /// Compares weather two versions are compatible.
     ///
@@ -417,25 +252,9 @@ extern "C" {
     ///
     /// Returns [Bool::False] if `lhs` and `rhs` are incompatible.
     /// Returns [Bool::True] if `lhs` is compatible with `rhs`.
-    ///
-    /// # Undefined Behaviour
-    ///
-    /// The caller must ensure that the following preconditions hold:
-    ///
-    /// ```no_run
-    /// # use emf_core_base_ffi_rs::version::Version;
-    /// # use std::ptr::null;
-    /// # let lhs: *const Version = null();
-    /// # let rhs: *const Version = null();
-    /// assert_ne!(
-    ///     lhs,
-    ///     null()
-    /// );
-    /// assert_ne!(
-    ///     rhs,
-    ///     null()
-    /// );
-    /// ```
     #[must_use]
-    pub fn emf_cbase_version_is_compatible(lhs: *const Version, rhs: *const Version) -> Bool;
+    pub fn emf_cbase_version_is_compatible(
+        lhs: NonNullConst<Version>,
+        rhs: NonNullConst<Version>,
+    ) -> Bool;
 }

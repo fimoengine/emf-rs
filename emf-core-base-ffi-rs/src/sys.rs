@@ -1,6 +1,6 @@
 //! Definition of the `sys` api.
 
-use crate::containers::Optional;
+use crate::containers::{NonNullConst, Optional};
 use crate::fn_ptr::BaseFn;
 use crate::{Bool, FnId};
 use std::os::raw::c_char;
@@ -126,7 +126,7 @@ extern "C" {
     ///
     /// The callee expects that the caller holds a lock (See [emf_cbase_sys_lock()]).
     #[must_use]
-    pub fn emf_cbase_sys_get_sync_handler() -> *const SyncHandlerInterface;
+    pub fn emf_cbase_sys_get_sync_handler() -> NonNullConst<SyncHandlerInterface>;
 
     /// Sets a new synchronisation handler.
     ///
