@@ -6,6 +6,7 @@ mod fn_id;
 pub mod containers;
 pub mod fn_ptr;
 pub mod sys;
+pub mod version;
 
 pub use boolean::Bool;
 pub use fn_id::FnId;

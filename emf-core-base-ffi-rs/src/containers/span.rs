@@ -3,6 +3,7 @@
 
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
+use std::os::raw::c_char;
 use std::ptr::{null, null_mut};
 use std::slice::{Iter, IterMut};
 
@@ -62,6 +63,28 @@ where
     /// Checks if the span is empty.
     pub fn is_empty(&self) -> bool {
         self.data == null() || self.length == 0
+    }
+}
+
+impl<'a> Span<'a, u8> {
+    /// Transforms a `Span<'a, u8>` into a `Span<'a, c_char>`.
+    pub fn as_c_char_span(self) -> Span<'a, c_char> {
+        Span {
+            data: self.data as *const c_char,
+            length: self.length,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a> Span<'a, c_char> {
+    /// Transforms a `Span<'a, c_char>` into a `Span<'a, u8>`.
+    pub fn as_rust_char_span(self) -> Span<'a, u8> {
+        Span {
+            data: self.data as *const u8,
+            length: self.length,
+            phantom: PhantomData,
+        }
     }
 }
 
@@ -183,6 +206,46 @@ where
     }
 }
 
+impl<'a> From<&'a str> for Span<'a, u8> {
+    fn from(string: &'a str) -> Self {
+        Self {
+            data: string.as_ptr(),
+            length: string.len(),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a> From<&'a mut str> for Span<'a, u8> {
+    fn from(string: &'a mut str) -> Self {
+        Self {
+            data: string.as_ptr(),
+            length: string.len(),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a> From<&'a String> for Span<'a, u8> {
+    fn from(string: &'a String) -> Self {
+        Self {
+            data: string.as_ptr(),
+            length: string.len(),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a> From<&'a mut String> for Span<'a, u8> {
+    fn from(string: &'a mut String) -> Self {
+        Self {
+            data: string.as_ptr(),
+            length: string.len(),
+            phantom: PhantomData,
+        }
+    }
+}
+
 impl<'a, T> IntoIterator for &'a Span<'_, T>
 where
     T: Copy + Sized,
@@ -247,6 +310,28 @@ where
     /// Checks if the span is empty.
     pub fn is_empty(&self) -> bool {
         self.data == null_mut() || self.length == 0
+    }
+}
+
+impl<'a> MutSpan<'a, u8> {
+    /// Transforms a `MutSpan<'a, u8>` into a `MutSpan<'a, c_char>`.
+    pub fn as_c_char_span(self) -> MutSpan<'a, c_char> {
+        MutSpan {
+            data: self.data as *mut c_char,
+            length: self.length,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a> MutSpan<'a, c_char> {
+    /// Transforms a `MutSpan<'a, c_char>` into a `MutSpan<'a, u8>`.
+    pub fn as_rust_char_span(self) -> MutSpan<'a, u8> {
+        MutSpan {
+            data: self.data as *mut u8,
+            length: self.length,
+            phantom: PhantomData,
+        }
     }
 }
 
@@ -342,6 +427,26 @@ where
         Self {
             data: vec.as_mut_ptr(),
             length: vec.len(),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a> From<&'a mut str> for MutSpan<'a, u8> {
+    fn from(string: &'a mut str) -> Self {
+        Self {
+            data: string.as_mut_ptr(),
+            length: string.len(),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a> From<&'a mut String> for MutSpan<'a, u8> {
+    fn from(string: &'a mut String) -> Self {
+        Self {
+            data: string.as_mut_ptr(),
+            length: string.len(),
             phantom: PhantomData,
         }
     }
