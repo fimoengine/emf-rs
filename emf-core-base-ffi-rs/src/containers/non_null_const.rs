@@ -67,3 +67,21 @@ where
         }
     }
 }
+
+impl<T> From<&'_ T> for NonNullConst<T>
+where
+    T: ?Sized,
+{
+    fn from(value: &T) -> Self {
+        Self { ptr: value.into() }
+    }
+}
+
+impl<T> From<&'_ mut T> for NonNullConst<T>
+where
+    T: ?Sized,
+{
+    fn from(value: &mut T) -> Self {
+        Self { ptr: value.into() }
+    }
+}
