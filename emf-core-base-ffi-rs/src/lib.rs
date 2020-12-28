@@ -5,6 +5,7 @@ mod fn_id;
 
 pub mod containers;
 pub mod fn_ptr;
+pub mod library;
 pub mod sys;
 pub mod version;
 

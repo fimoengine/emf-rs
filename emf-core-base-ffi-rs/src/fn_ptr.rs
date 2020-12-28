@@ -1,6 +1,10 @@
 //! Function types specified by the `emf-core-base` interface.
 
 use crate::containers::{MutSpan, NonNullConst, Optional, Span};
+use crate::library::{
+    DataSymbol, FnSymbol, LibraryError, LibraryHandle, LibraryType, LoaderHandle, LoaderInterface,
+    LoaderLibraryHandle, OsPathChar,
+};
 use crate::sys::SyncHandlerInterface;
 use crate::version::{ReleaseType, Version, VersionError};
 use crate::{BaseT, Bool, FnId};
@@ -161,3 +165,126 @@ pub type VersionIsCompatibleFn = extern "C" fn(
     lhs: NonNullConst<Version>,
     rhs: NonNullConst<Version>,
 ) -> Bool;
+
+/// Function pointer to the
+/// [emf_cbase_library_register_loader](crate::library::emf_cbase_library_register_loader) function.
+pub type LibraryRegisterLoaderFn = extern "C" fn(
+    base_module: *mut BaseT,
+    loader_interface: NonNullConst<LoaderInterface>,
+    library_type: NonNullConst<LibraryType>,
+) -> Result<LoaderHandle, LibraryError>;
+
+/// Function pointer to the
+/// [emf_cbase_library_unregister_loader](crate::library::emf_cbase_library_unregister_loader)
+/// function.
+pub type LibraryUnregisterLoaderFn =
+    extern "C" fn(base_module: *mut BaseT, loader_handle: LoaderHandle) -> Optional<LibraryError>;
+
+/// Function pointer to the
+/// [emf_cbase_library_get_num_loaders](crate::library::emf_cbase_library_get_num_loaders) function.
+pub type LibraryGetNumLoadersFn = extern "C" fn(base_module: *mut BaseT) -> usize;
+
+/// Function pointer to the
+/// [emf_cbase_library_get_library_types](crate::library::emf_cbase_library_get_library_types)
+/// function.
+pub type LibraryGetLibraryTypesFn = extern "C" fn(
+    base_module: *mut BaseT,
+    buffer: NonNull<MutSpan<LibraryType>>,
+) -> Result<usize, LibraryError>;
+
+/// Function pointer to the
+/// [emf_cbase_library_get_loader_handle](crate::library::emf_cbase_library_get_loader_handle)
+/// function.
+pub type LibraryGetLoaderHandleFn = extern "C" fn(
+    base_module: *mut BaseT,
+    library_type: NonNullConst<LibraryType>,
+) -> Result<LoaderHandle, LibraryError>;
+
+/// Function pointer to the
+/// [emf_cbase_library_type_exists](crate::library::emf_cbase_library_type_exists) function.
+pub type LibraryTypeExistsFn =
+    extern "C" fn(base_module: *mut BaseT, library_type: NonNullConst<LibraryType>) -> Bool;
+
+/// Function pointer to the
+/// [emf_cbase_library_library_exists](crate::library::emf_cbase_library_library_exists) function.
+pub type LibraryLibraryExistsFn =
+    extern "C" fn(base_module: *mut BaseT, library_handle: LibraryHandle) -> Bool;
+
+/// Function pointer to the
+/// [emf_cbase_library_unsafe_create_library_handle](crate::library::emf_cbase_library_unsafe_create_library_handle)
+/// function.
+pub type LibraryUnsafeCreateLibraryHandleFn =
+    extern "C" fn(base_module: *mut BaseT) -> LibraryHandle;
+
+/// Function pointer to the
+/// [emf_cbase_library_unsafe_remove_library_handle](crate::library::emf_cbase_library_unsafe_remove_library_handle)
+/// function.
+pub type LibraryUnsafeRemoveLibraryHandleFn =
+    extern "C" fn(base_module: *mut BaseT, library_handle: LibraryHandle) -> Optional<LibraryError>;
+
+/// Function pointer to the
+/// [emf_cbase_library_unsafe_link_library](crate::library::emf_cbase_library_unsafe_link_library)
+/// function.
+pub type LibraryUnsafeLinkLibraryFn = extern "C" fn(
+    base_module: *mut BaseT,
+    library_handle: LibraryHandle,
+    loader_handle: LoaderHandle,
+    internal_handle: LoaderLibraryHandle,
+) -> Optional<LibraryError>;
+
+/// Function pointer to the
+/// [emf_cbase_library_unsafe_get_loader_library_handle](crate::library::emf_cbase_library_unsafe_get_loader_library_handle)
+/// function.
+pub type LibraryUnsafeGetLoaderLibraryHandleFn =
+    extern "C" fn(
+        base_module: *mut BaseT,
+        library_handle: LibraryHandle,
+    ) -> Result<LoaderLibraryHandle, LibraryError>;
+
+/// Function pointer to the
+/// [emf_cbase_library_unsafe_get_loader_handle](crate::library::emf_cbase_library_unsafe_get_loader_handle)
+/// function.
+pub type LibraryUnsafeGetLoaderHandleFn = extern "C" fn(
+    base_module: *mut BaseT,
+    library_handle: LibraryHandle,
+) -> Result<LoaderHandle, LibraryError>;
+
+/// Function pointer to the
+/// [emf_cbase_library_unsafe_get_loader_interface](crate::library::emf_cbase_library_unsafe_get_loader_interface)
+/// function.
+pub type LibraryUnsafeGetLoaderInterfaceFn =
+    extern "C" fn(
+        base_module: *mut BaseT,
+        loader_handle: LoaderHandle,
+    ) -> Result<NonNullConst<LoaderInterface>, LibraryError>;
+
+/// Function pointer to the
+/// [emf_cbase_library_load](crate::library::emf_cbase_library_load)
+/// function.
+pub type LibraryLoadFn = extern "C" fn(
+    base_module: *mut BaseT,
+    loader_handle: LoaderHandle,
+    library_path: NonNullConst<OsPathChar>,
+) -> Result<LibraryHandle, LibraryError>;
+
+/// Function pointer to the
+/// [emf_cbase_library_unload](crate::library::emf_cbase_library_unload) function.
+pub type LibraryUnloadFn =
+    extern "C" fn(base_module: *mut BaseT, library_handle: LibraryHandle) -> Optional<LibraryError>;
+
+/// Function pointer to the
+/// [emf_cbase_library_get_data_symbol](crate::library::emf_cbase_library_get_data_symbol) function.
+pub type LibraryGetDataSymbolFn = extern "C" fn(
+    base_module: *mut BaseT,
+    library_handle: LibraryHandle,
+    symbol_name: NonNullConst<c_char>,
+) -> Result<DataSymbol, LibraryError>;
+
+/// Function pointer to the
+/// [emf_cbase_library_get_function_symbol](crate::library::emf_cbase_library_get_function_symbol)
+/// function.
+pub type LibraryGetFunctionSymbolFn = extern "C" fn(
+    base_module: *mut BaseT,
+    library_handle: LibraryHandle,
+    symbol_name: NonNullConst<c_char>,
+) -> Result<FnSymbol, LibraryError>;
