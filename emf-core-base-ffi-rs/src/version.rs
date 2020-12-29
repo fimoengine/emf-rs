@@ -42,7 +42,7 @@ use std::os::raw::c_char;
 use std::ptr::NonNull;
 
 /// An enum describing the release type of a version.
-#[repr(C)]
+#[repr(i8)]
 #[derive(Copy, Clone)]
 pub enum ReleaseType {
     Gold = 0,
@@ -71,7 +71,7 @@ pub struct Version {
 /// An enum describing the possible error values of the `version` api.
 ///
 /// The values `0-99` are reserved for future use.
-#[repr(C)]
+#[repr(i32)]
 #[non_exhaustive]
 #[derive(Copy, Clone)]
 pub enum VersionError {

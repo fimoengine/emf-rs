@@ -13,8 +13,10 @@ pub use boolean::Bool;
 pub use fn_id::FnId;
 pub use interface::BaseInterface;
 
-/// An opaque structure representing the emf-core-base interface.
+/// An opaque structure representing the `emf-core-base` interface.
 #[repr(C)]
 pub struct BaseT {
     _private: [u8; 0],
 }
+
+include!(concat!(env!("OUT_DIR"), "/versions.rs"));
