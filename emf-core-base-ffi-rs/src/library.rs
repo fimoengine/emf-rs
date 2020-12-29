@@ -1,3 +1,5 @@
+//! A module for loading libraries.
+//!
 //! The `library` api is a collection of procedures that provide a platform agnostic interface
 //! to loading shared libraries. The actual loading of a library is handled by a `library loader`.
 //! Each `library loader` is associated to a `library type`.
