@@ -50,7 +50,7 @@
 //!     /// Other systems require a conversion.
 //!     let library_handle = emf_cbase_library_load(
 //!         LIBRARY_LOADER_DEFAULT_HANDLE,
-//!         NonNullConst::from(&LIBRARY_PATH).cast()
+//!         NonNullConst::new_unchecked(LIBRARY_PATH.as_ptr()).cast()
 //!     );
 //!
 //!     let library_handle = match library_handle.to_native() {
@@ -63,7 +63,7 @@
 //!
 //!     let fn_symbol = emf_cbase_library_get_function_symbol(
 //!         library_handle,
-//!         NonNullConst::from(&LIBRARY_PATH).cast()
+//!         NonNullConst::new_unchecked(SYMBOL_NAME.as_ptr()).cast()
 //!     );
 //!
 //!     let fn_symbol: extern "C" fn(i32, i32) = match fn_symbol.to_native() {

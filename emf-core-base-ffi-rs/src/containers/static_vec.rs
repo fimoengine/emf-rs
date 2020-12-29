@@ -4,6 +4,7 @@
 use std::cmp::min;
 use std::fmt::{Debug, Formatter};
 use std::ops::{Deref, DerefMut};
+use std::os::raw::c_char;
 use std::slice::{Iter, IterMut};
 
 /// A contiguous statically sized array type.
@@ -228,6 +229,12 @@ where
 impl<const N: usize> From<&'_ str> for StaticVec<u8, N> {
     fn from(str: &str) -> Self {
         Self::from(str.as_bytes())
+    }
+}
+
+impl<const N: usize> From<&'_ str> for StaticVec<c_char, N> {
+    fn from(str: &str) -> Self {
+        unsafe { Self::from(std::mem::transmute::<&[u8], &[c_char]>(str.as_bytes())) }
     }
 }
 
