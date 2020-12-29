@@ -2,8 +2,12 @@
 
 use crate::containers::{MutSpan, NonNullConst, Optional, Span};
 use crate::library::{
-    DataSymbol, FnSymbol, LibraryError, LibraryHandle, LibraryType, LoaderHandle, LoaderInterface,
-    LoaderLibraryHandle, OsPathChar,
+    DataSymbol, FnSymbol, LibraryError, LibraryHandle, LibraryType,
+    LoaderHandle as LibraryLoaderHandle, LoaderInterface, LoaderLibraryHandle, OsPathChar,
+};
+use crate::module::{
+    InterfaceDescriptor, LoaderHandle as ModuleLoaderHandle, LoaderModuleHandle, ModuleError,
+    ModuleHandle, ModuleInfo, ModuleInterface, ModuleLoaderInterface, ModuleStatus, ModuleType,
 };
 use crate::sys::SyncHandlerInterface;
 use crate::version::{ReleaseType, Version, VersionError};
@@ -172,13 +176,15 @@ pub type LibraryRegisterLoaderFn = extern "C" fn(
     base_module: *mut BaseT,
     loader_interface: NonNullConst<LoaderInterface>,
     library_type: NonNullConst<LibraryType>,
-) -> Result<LoaderHandle, LibraryError>;
+) -> Result<LibraryLoaderHandle, LibraryError>;
 
 /// Function pointer to the
 /// [emf_cbase_library_unregister_loader](crate::library::emf_cbase_library_unregister_loader)
 /// function.
-pub type LibraryUnregisterLoaderFn =
-    extern "C" fn(base_module: *mut BaseT, loader_handle: LoaderHandle) -> Optional<LibraryError>;
+pub type LibraryUnregisterLoaderFn = extern "C" fn(
+    base_module: *mut BaseT,
+    loader_handle: LibraryLoaderHandle,
+) -> Optional<LibraryError>;
 
 /// Function pointer to the
 /// [emf_cbase_library_get_num_loaders](crate::library::emf_cbase_library_get_num_loaders) function.
@@ -198,7 +204,7 @@ pub type LibraryGetLibraryTypesFn = extern "C" fn(
 pub type LibraryGetLoaderHandleFn = extern "C" fn(
     base_module: *mut BaseT,
     library_type: NonNullConst<LibraryType>,
-) -> Result<LoaderHandle, LibraryError>;
+) -> Result<LibraryLoaderHandle, LibraryError>;
 
 /// Function pointer to the
 /// [emf_cbase_library_type_exists](crate::library::emf_cbase_library_type_exists) function.
@@ -228,7 +234,7 @@ pub type LibraryUnsafeRemoveLibraryHandleFn =
 pub type LibraryUnsafeLinkLibraryFn = extern "C" fn(
     base_module: *mut BaseT,
     library_handle: LibraryHandle,
-    loader_handle: LoaderHandle,
+    loader_handle: LibraryLoaderHandle,
     internal_handle: LoaderLibraryHandle,
 ) -> Optional<LibraryError>;
 
@@ -244,10 +250,11 @@ pub type LibraryUnsafeGetLoaderLibraryHandleFn =
 /// Function pointer to the
 /// [emf_cbase_library_unsafe_get_loader_handle](crate::library::emf_cbase_library_unsafe_get_loader_handle)
 /// function.
-pub type LibraryUnsafeGetLoaderHandleFn = extern "C" fn(
-    base_module: *mut BaseT,
-    library_handle: LibraryHandle,
-) -> Result<LoaderHandle, LibraryError>;
+pub type LibraryUnsafeGetLoaderHandleFn =
+    extern "C" fn(
+        base_module: *mut BaseT,
+        library_handle: LibraryHandle,
+    ) -> Result<LibraryLoaderHandle, LibraryError>;
 
 /// Function pointer to the
 /// [emf_cbase_library_unsafe_get_loader_interface](crate::library::emf_cbase_library_unsafe_get_loader_interface)
@@ -255,7 +262,7 @@ pub type LibraryUnsafeGetLoaderHandleFn = extern "C" fn(
 pub type LibraryUnsafeGetLoaderInterfaceFn =
     extern "C" fn(
         base_module: *mut BaseT,
-        loader_handle: LoaderHandle,
+        loader_handle: LibraryLoaderHandle,
     ) -> Result<NonNullConst<LoaderInterface>, LibraryError>;
 
 /// Function pointer to the
@@ -263,7 +270,7 @@ pub type LibraryUnsafeGetLoaderInterfaceFn =
 /// function.
 pub type LibraryLoadFn = extern "C" fn(
     base_module: *mut BaseT,
-    loader_handle: LoaderHandle,
+    loader_handle: LibraryLoaderHandle,
     library_path: NonNullConst<OsPathChar>,
 ) -> Result<LibraryHandle, LibraryError>;
 
@@ -288,3 +295,244 @@ pub type LibraryGetFunctionSymbolFn = extern "C" fn(
     library_handle: LibraryHandle,
     symbol_name: NonNullConst<c_char>,
 ) -> Result<FnSymbol, LibraryError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_register_loader](crate::module::emf_cbase_module_register_loader) function.
+pub type ModuleRegisterLoaderFn = extern "C" fn(
+    base_module: *mut BaseT,
+    loader_interface: NonNullConst<ModuleLoaderInterface>,
+    module_type: NonNullConst<ModuleType>,
+) -> Result<ModuleLoaderHandle, ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_unregister_loader](crate::module::emf_cbase_module_unregister_loader) function.
+pub type ModuleUnregisterLoaderFn = extern "C" fn(
+    base_module: *mut BaseT,
+    loader_handle: ModuleLoaderHandle,
+) -> Optional<ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_get_num_loaders](crate::module::emf_cbase_module_get_num_loaders) function.
+pub type ModuleGetNumLoadersFn = extern "C" fn(base_module: *mut BaseT) -> usize;
+
+/// Function pointer to the
+/// [emf_cbase_module_get_module_types](crate::module::emf_cbase_module_get_module_types) function.
+pub type ModuleGetModuleTypesFn = extern "C" fn(
+    base_module: *mut BaseT,
+    buffer: NonNull<MutSpan<ModuleType>>,
+) -> Result<usize, ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_get_num_modules](crate::module::emf_cbase_module_get_num_modules) function.
+pub type ModuleGetNumModulesFn = extern "C" fn(base_module: *mut BaseT) -> usize;
+
+/// Function pointer to the
+/// [emf_cbase_module_get_modules](crate::module::emf_cbase_module_get_modules) function.
+pub type ModuleGetModulesFn = extern "C" fn(
+    base_module: *mut BaseT,
+    buffer: NonNull<MutSpan<ModuleInfo>>,
+) -> Result<usize, ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_get_num_exported_interfaces](crate::module::emf_cbase_module_get_num_exported_interfaces)
+/// function.
+pub type ModuleGetNumExportedInterfacesFn = extern "C" fn(base_module: *mut BaseT) -> usize;
+
+/// Function pointer to the
+/// [emf_cbase_module_get_exported_interfaces](crate::module::emf_cbase_module_get_exported_interfaces)
+/// function.
+pub type ModuleGetExportedInterfacesFn = extern "C" fn(
+    base_module: *mut BaseT,
+    buffer: NonNull<MutSpan<InterfaceDescriptor>>,
+) -> Result<usize, ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_get_loader_handle](crate::module::emf_cbase_module_get_loader_handle) function.
+pub type ModuleGetLoaderHandleFn = extern "C" fn(
+    base_module: *mut BaseT,
+    module_type: NonNullConst<ModuleType>,
+) -> Result<ModuleLoaderHandle, ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_type_exists](crate::module::emf_cbase_module_type_exists) function.
+pub type ModuleTypeExistsFn =
+    extern "C" fn(base_module: *mut BaseT, module_type: NonNullConst<ModuleType>) -> Bool;
+
+/// Function pointer to the
+/// [emf_cbase_module_module_exists](crate::module::emf_cbase_module_module_exists) function.
+pub type ModuleModuleExistsFn =
+    extern "C" fn(base_module: *mut BaseT, module_handle: ModuleHandle) -> Bool;
+
+/// Function pointer to the
+/// [emf_cbase_module_get_exported_interface_handle](crate::module::emf_cbase_module_get_exported_interface_handle)
+/// function.
+pub type ModuleGetExportedInterfaceHandleFn = extern "C" fn(
+    base_module: *mut BaseT,
+    interface: NonNullConst<InterfaceDescriptor>,
+) -> Result<ModuleHandle, ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_exported_interface_exists](crate::module::emf_cbase_module_exported_interface_exists)
+/// function.
+pub type ModuleExportedInterfaceExistsFn =
+    extern "C" fn(base_module: *mut BaseT, interface: NonNullConst<InterfaceDescriptor>) -> Bool;
+
+/// Function pointer to the
+/// [emf_cbase_module_unsafe_create_module_handle](crate::module::emf_cbase_module_unsafe_create_module_handle)
+/// function.
+pub type ModuleUnsafeCreateModuleHandleFn = extern "C" fn(base_module: *mut BaseT) -> ModuleHandle;
+
+/// Function pointer to the
+/// [emf_cbase_module_unsafe_remove_module_handle](crate::module::emf_cbase_module_unsafe_remove_module_handle)
+/// function.
+pub type ModuleUnsafeRemoveModuleHandleFn =
+    extern "C" fn(base_module: *mut BaseT) -> Optional<ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_unsafe_link_module](crate::module::emf_cbase_module_unsafe_link_module)
+/// function.
+pub type ModuleUnsafeLinkModuleFn = extern "C" fn(
+    base_module: *mut BaseT,
+    module_handle: ModuleHandle,
+    loader_handle: ModuleLoaderHandle,
+    internal_handle: LoaderModuleHandle,
+) -> Optional<ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_unsafe_get_loader_module_handle](crate::module::emf_cbase_module_unsafe_get_loader_module_handle)
+/// function.
+pub type ModuleUnsafeGetLoaderModuleHandleFn =
+    extern "C" fn(
+        base_module: *mut BaseT,
+        module_handle: ModuleHandle,
+    ) -> Result<LoaderModuleHandle, ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_unsafe_get_loader_handle](crate::module::emf_cbase_module_unsafe_get_loader_handle)
+/// function.
+pub type ModuleUnsafeGetLoaderHandleFn = extern "C" fn(
+    base_module: *mut BaseT,
+    module_handle: ModuleHandle,
+) -> Result<ModuleLoaderHandle, ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_unsafe_get_loader](crate::module::emf_cbase_module_unsafe_get_loader)
+/// function.
+pub type ModuleUnsafeGetLoaderFn =
+    extern "C" fn(
+        base_module: *mut BaseT,
+        loader_handle: ModuleLoaderHandle,
+    ) -> Result<NonNullConst<ModuleLoaderInterface>, ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_add_module](crate::module::emf_cbase_module_add_module) function.
+pub type ModuleAddModuleFn = extern "C" fn(
+    base_module: *mut BaseT,
+    loader_handle: ModuleLoaderHandle,
+    module_path: NonNullConst<OsPathChar>,
+) -> Result<ModuleHandle, ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_remove_module](crate::module::emf_cbase_module_remove_module) function.
+pub type ModuleRemoveModuleFn =
+    extern "C" fn(base_module: *mut BaseT, module_handle: ModuleHandle) -> Optional<ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_get_load_dependencies](crate::module::emf_cbase_module_get_load_dependencies)
+/// function.
+pub type ModuleGetLoadDependenciesFn =
+    extern "C" fn(
+        base_module: *mut BaseT,
+        module_handle: ModuleHandle,
+    ) -> Result<Span<'static, InterfaceDescriptor<'static>>, ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_fetch_status](crate::module::emf_cbase_module_fetch_status) function.
+pub type ModuleFetchStatusFn = extern "C" fn(
+    base_module: *mut BaseT,
+    module_handle: ModuleHandle,
+) -> Result<ModuleStatus, ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_add_dependency](crate::module::emf_cbase_module_add_dependency) function.
+pub type ModuleAddDependencyFn = extern "C" fn(
+    base_module: *mut BaseT,
+    module_handle: ModuleHandle,
+    interface_descriptor: NonNullConst<InterfaceDescriptor>,
+) -> Optional<ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_remove_dependency](crate::module::emf_cbase_module_remove_dependency) function.
+pub type ModuleRemoveDependencyFn = extern "C" fn(
+    base_module: *mut BaseT,
+    module_handle: ModuleHandle,
+    interface_descriptor: NonNullConst<InterfaceDescriptor>,
+) -> Optional<ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_export_interface](crate::module::emf_cbase_module_export_interface) function.
+pub type ModuleExportInterfaceFn = extern "C" fn(
+    base_module: *mut BaseT,
+    module_handle: ModuleHandle,
+    interface_descriptor: NonNullConst<InterfaceDescriptor>,
+) -> Optional<ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_load](crate::module::emf_cbase_module_load) function.
+pub type ModuleLoadFn =
+    extern "C" fn(base_module: *mut BaseT, module_handle: ModuleHandle) -> Optional<ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_unload](crate::module::emf_cbase_module_unload) function.
+pub type ModuleUnloadFn =
+    extern "C" fn(base_module: *mut BaseT, module_handle: ModuleHandle) -> Optional<ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_initialize](crate::module::emf_cbase_module_initialize) function.
+pub type ModuleInitializeFn =
+    extern "C" fn(base_module: *mut BaseT, module_handle: ModuleHandle) -> Optional<ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_terminate](crate::module::emf_cbase_module_terminate) function.
+pub type ModuleTerminateFn =
+    extern "C" fn(base_module: *mut BaseT, module_handle: ModuleHandle) -> Optional<ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_get_module_info](crate::module::emf_cbase_module_get_module_info) function.
+pub type ModuleGetModuleInfoFn = extern "C" fn(
+    base_module: *mut BaseT,
+    module_handle: ModuleHandle,
+) -> Result<NonNullConst<ModuleInfo>, ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_get_exportable_interfaces](crate::module::emf_cbase_module_get_exportable_interfaces)
+/// function.
+pub type ModuleGetExportableInterfacesFn =
+    extern "C" fn(
+        base_module: *mut BaseT,
+        module_handle: ModuleHandle,
+    ) -> Result<Span<'static, InterfaceDescriptor<'static>>, ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_get_runtime_dependencies](crate::module::emf_cbase_module_get_runtime_dependencies)
+/// function.
+pub type ModuleGetRuntimeDependenciesFn =
+    extern "C" fn(
+        base_module: *mut BaseT,
+        module_handle: ModuleHandle,
+    ) -> Result<Span<'static, InterfaceDescriptor<'static>>, ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_get_interface](crate::module::emf_cbase_module_get_interface) function.
+pub type ModuleGetInterfaceFn = extern "C" fn(
+    base_module: *mut BaseT,
+    module_handle: ModuleHandle,
+    interface_descriptor: NonNullConst<InterfaceDescriptor>,
+) -> Result<ModuleInterface, ModuleError>;
+
+/// Function pointer to the
+/// [emf_cbase_module_get_module_path](crate::module::emf_cbase_module_get_module_path) function.
+pub type ModuleGetModulePathFn = extern "C" fn(
+    base_module: *mut BaseT,
+    module_handle: ModuleHandle,
+) -> Result<NonNullConst<OsPathChar>, ModuleError>;
