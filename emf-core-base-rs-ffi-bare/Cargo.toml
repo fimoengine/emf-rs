@@ -1,5 +1,5 @@
 [package]
-name = "emf-core-base-ffi-rs"
+name = "emf-core-base-rs-ffi-bare"
 version = "0.1.0"
 authors = ["Gabriel Borrelli <gabriel.borrelli@nanoshellsoft.com>"]
 edition = "2018"
