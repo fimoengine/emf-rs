@@ -4,6 +4,9 @@ use crate::fn_ptr::*;
 use crate::version::Version;
 use crate::BaseT;
 
+/// Name of the `emf-core-base` interface.
+pub const BASE_INTERFACE_NAME: &str = "emf::core_base";
+
 /// Structure describing the `emf-core-base` interface.
 #[repr(C)]
 #[derive(Copy, Clone)]
