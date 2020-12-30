@@ -17,7 +17,7 @@ pub mod version;
 
 pub use boolean::Bool;
 pub use fn_id::FnId;
-pub use interface::BaseInterface;
+pub use interface::{BaseInterface, BASE_INTERFACE_NAME};
 
 /// An opaque structure representing the `emf-core-base` interface.
 #[repr(C)]

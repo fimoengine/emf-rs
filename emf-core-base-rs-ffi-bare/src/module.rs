@@ -129,13 +129,13 @@
 //! # Example
 //!
 //! ```no_run
-//! # use emf_core_base_ffi_rs::sys::{emf_cbase_sys_lock, emf_cbase_sys_unlock, emf_cbase_sys_panic};
-//! # use emf_core_base_ffi_rs::module::{emf_cbase_module_add_module, MODULE_LOADER_DEFAULT_HANDLE,
-//! #     emf_cbase_module_load, emf_cbase_module_initialize, InterfaceDescriptor, ModuleName,
-//! #     emf_cbase_module_export_interface};
-//! # use emf_core_base_ffi_rs::containers::{NonNullConst, Span};
+//! # use emf_core_base_rs_ffi_bare::sys::{emf_cbase_sys_lock, emf_cbase_sys_unlock, emf_cbase_sys_panic};
+//! # use emf_core_base_rs_ffi_bare::module::{emf_cbase_module_add_module, MODULE_LOADER_DEFAULT_HANDLE,
+//!     emf_cbase_module_load, emf_cbase_module_initialize, InterfaceDescriptor, ModuleName,
+//!     emf_cbase_module_export_interface};
+//! # use emf_core_base_rs_ffi_bare::containers::{NonNullConst, Span};
 //! # use std::ffi::CString;
-//! # use emf_core_base_ffi_rs::version::emf_cbase_version_construct_short;
+//! # use emf_core_base_rs_ffi_bare::version::emf_cbase_version_construct_short;
 //! # use std::os::raw::c_char;
 //!
 //! unsafe {
@@ -228,7 +228,7 @@ pub const MODULE_LOADER_DEFAULT_HANDLE: LoaderHandle = LoaderHandle {
 /// An enum describing all possible module states.
 #[repr(i32)]
 #[non_exhaustive]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ModuleStatus {
     Unloaded = 0,
     Terminated = 1,
@@ -301,7 +301,7 @@ pub type ModuleType = StaticVec<c_char, 64>;
 /// The values `0-99` are reserved for future use.
 #[repr(i32)]
 #[non_exhaustive]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ModulePredefinedHandles {
     Native = 0,
 }
@@ -320,7 +320,7 @@ pub struct InterfaceDescriptor<'a> {
 /// The values `0-99` are reserved for future use.
 #[repr(i32)]
 #[non_exhaustive]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ModuleError {
     PathInvalid = 0,
     ModuleStateInvalid = 1,

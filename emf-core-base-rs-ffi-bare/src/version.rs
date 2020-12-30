@@ -4,13 +4,13 @@
 //! # Example
 //!
 //! ```no_run
-//! use emf_core_base_ffi_rs::version::{
+//! use emf_core_base_rs_ffi_bare::version::{
 //!     emf_cbase_version_construct_short, emf_cbase_version_construct_from_string,
 //!     emf_cbase_version_compare_weak
 //! };
-//! use emf_core_base_ffi_rs::containers::Span;
+//! use emf_core_base_rs_ffi_bare::containers::Span;
 //! use std::os::raw::c_char;
-//! use emf_core_base_ffi_rs::sys::{
+//! use emf_core_base_rs_ffi_bare::sys::{
 //!     emf_cbase_sys_lock, emf_cbase_sys_panic, emf_cbase_sys_unlock
 //! };
 //! use std::ffi::CString;
@@ -43,7 +43,7 @@ use std::ptr::NonNull;
 
 /// An enum describing the release type of a version.
 #[repr(i8)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ReleaseType {
     Gold = 0,
     PreAlpha = 1,
@@ -73,7 +73,7 @@ pub struct Version {
 /// The values `0-99` are reserved for future use.
 #[repr(i32)]
 #[non_exhaustive]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum VersionError {
     InvalidString = 0,
     BufferOverflow = 1,

@@ -35,9 +35,10 @@
 //! # Example
 //!
 //! ```no_run
-//! # use emf_core_base_ffi_rs::sys::{emf_cbase_sys_lock, emf_cbase_sys_unlock, emf_cbase_sys_panic};
-//! # use emf_core_base_ffi_rs::library::{emf_cbase_library_load, LIBRARY_LOADER_DEFAULT_HANDLE, emf_cbase_library_get_function_symbol, emf_cbase_library_unload};
-//! # use emf_core_base_ffi_rs::containers::NonNullConst;
+//! # use emf_core_base_rs_ffi_bare::sys::{emf_cbase_sys_lock, emf_cbase_sys_unlock, emf_cbase_sys_panic};
+//! # use emf_core_base_rs_ffi_bare::library::{emf_cbase_library_load, LIBRARY_LOADER_DEFAULT_HANDLE,
+//! #     emf_cbase_library_get_function_symbol, emf_cbase_library_unload};
+//! # use emf_core_base_rs_ffi_bare::containers::NonNullConst;
 //! # use std::ffi::CString;
 //!
 //! unsafe {
@@ -161,7 +162,7 @@ pub type LibraryType = StaticVec<c_char, 64>;
 /// The values `0-99` are reserved for future use.
 #[repr(i32)]
 #[non_exhaustive]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum LibraryPredefinedHandles {
     Native = 0,
 }
@@ -171,7 +172,7 @@ pub enum LibraryPredefinedHandles {
 /// The values `0-99` are reserved for future use.
 #[repr(i32)]
 #[non_exhaustive]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum LibraryError {
     PathNotFound = 0,
     LibraryHandleInvalid = 1,
