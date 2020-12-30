@@ -1,6 +1,7 @@
 //! Mutable and immutable span implementation.
 #![allow(dead_code)]
 
+use std::fmt::{Debug, Formatter};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::os::raw::c_char;
@@ -103,6 +104,18 @@ where
 {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<T> Debug for Span<'_, T>
+where
+    T: Copy + Sized,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Span")
+            .field("data", &format_args!("{:p}", self.data))
+            .field("length", &self.length)
+            .finish()
     }
 }
 
@@ -359,6 +372,18 @@ where
 {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<T> Debug for MutSpan<'_, T>
+where
+    T: Copy + Sized,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Span")
+            .field("data", &format_args!("{:p}", self.data))
+            .field("length", &self.length)
+            .finish()
     }
 }
 
