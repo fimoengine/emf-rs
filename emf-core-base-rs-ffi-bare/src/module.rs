@@ -788,7 +788,9 @@ extern "C" {
     /// The callee expects that the caller holds a lock
     /// (See [emf_cbase_sys_lock()](crate::sys::emf_cbase_sys_lock)).
     #[must_use]
-    pub fn emf_cbase_module_unsafe_remove_module_handle() -> Optional<ModuleError>;
+    pub fn emf_cbase_module_unsafe_remove_module_handle(
+        module_handle: ModuleHandle,
+    ) -> Optional<ModuleError>;
 
     /// Links a module handle to an internal module handle.
     ///
