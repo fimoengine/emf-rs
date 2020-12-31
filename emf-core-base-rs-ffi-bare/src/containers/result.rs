@@ -309,7 +309,7 @@ where
     E: Copy + Sized,
 {
     fn from(res: std::result::Result<T, E>) -> Self {
-        res.map_or_else(|err| Self::new_err(err), |val| Self::new_ok(val))
+        res.map_or_else(Self::new_err, Self::new_ok)
     }
 }
 

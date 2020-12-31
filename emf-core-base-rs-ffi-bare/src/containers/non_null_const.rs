@@ -29,6 +29,10 @@ where
     T: ?Sized,
 {
     /// Creates a new `NonNull`.
+    ///
+    /// # Safety
+    ///
+    /// The same restrictions as [NonNull::new_unchecked](NonNull::new_unchecked) apply.
     #[inline]
     pub const unsafe fn new_unchecked(ptr: *const T) -> NonNullConst<T> {
         Self {
@@ -49,11 +53,16 @@ where
 
     /// Acquires the underlying `*const` pointer.
     #[inline]
+    #[allow(clippy::wrong_self_convention)]
     pub const fn as_ptr(self) -> *const T {
         self.ptr.as_ptr() as *const T
     }
 
     /// Returns a shared reference to the value.
+    ///
+    /// # Safety
+    ///
+    /// The same restrictions as [NonNull::as_ref](NonNull::as_ref) apply.
     #[inline]
     pub unsafe fn as_ref(&self) -> &T {
         self.ptr.as_ref()

@@ -222,7 +222,7 @@ where
 {
     fn eq(&self, other: &Self) -> bool {
         self.is_some() == other.is_some()
-            && (self.is_some() == false || self.data.value_ref() == other.data.value_ref())
+            && (!self.is_some() || self.data.value_ref() == other.data.value_ref())
     }
 }
 
@@ -233,7 +233,7 @@ where
     T: Copy + Sized,
 {
     fn from(opt: Option<T>) -> Self {
-        opt.map_or_else(|| Optional::none(), |val| Optional::some(val))
+        opt.map_or_else(Optional::none, Optional::some)
     }
 }
 
