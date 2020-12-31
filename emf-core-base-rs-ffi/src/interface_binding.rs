@@ -18,7 +18,14 @@ use std::ptr::NonNull;
 /// A trait to denote a binding object to the `emf-core-base` interface.
 pub trait InterfaceBinding {
     /// Initializes the binding object.
-    fn initialize(base_module: *mut BaseT, get_function_fn: SysGetFunctionFn) -> &'static Self;
+    ///
+    /// # Safety
+    ///
+    /// The parameter `get_function_fn` must be able to accept `base_module`.
+    unsafe fn initialize(
+        base_module: *mut BaseT,
+        get_function_fn: SysGetFunctionFn,
+    ) -> &'static Self;
 
     /// Fetches the version of the bound `emf-core-base` interface.
     fn get_version(&self) -> Version;

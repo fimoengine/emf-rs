@@ -3,6 +3,7 @@
 
 use crate::containers::{NonNullConst, Span};
 use crate::fn_ptr::BaseFn;
+use crate::library::OsPathChar;
 use crate::module::{InterfaceDescriptor, InterfaceExtension, ModuleName};
 use crate::version::Version;
 use crate::{BaseInterface, FnId, BASE_INTERFACE_NAME};
@@ -27,7 +28,6 @@ use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::os::raw::c_char;
 use std::ptr::{null, NonNull};
-use crate::library::OsPathChar;
 
 #[cfg(test)]
 mod tests;
@@ -100,14 +100,19 @@ pub static mut BASE_INTERFACE: MaybeUninit<&'static BaseInterface> = MaybeUninit
 /// Calling this is necessary if the user wishes to use a function defined
 /// by the `emf-core-base` interface. Alternatively, a local object implementing the
 /// [InterfaceBinding] trait, such as [BaseInterface], can be used.
-pub fn initialize_base_binding(base_module: *mut BaseT, get_function_fn: SysGetFunctionFn) {
-    unsafe {
-        BASE_INTERFACE = MaybeUninit::new(BaseInterface::initialize(base_module, get_function_fn));
-    }
+///
+/// # Safety
+///
+/// The parameter `get_function_fn` must be able to accept `base_module`.
+pub unsafe fn initialize_base_binding(base_module: *mut BaseT, get_function_fn: SysGetFunctionFn) {
+    BASE_INTERFACE = MaybeUninit::new(BaseInterface::initialize(base_module, get_function_fn));
 }
 
 impl InterfaceBinding for BaseInterface {
-    fn initialize(base_module: *mut BaseT, get_function_fn: SysGetFunctionFn) -> &'static Self {
+    unsafe fn initialize(
+        base_module: *mut BaseT,
+        get_function_fn: SysGetFunctionFn,
+    ) -> &'static Self {
         unsafe {
             let panic_fn: SysPanicFn =
                 match get_function_fn(base_module, FnId::SysPanic).to_native() {
