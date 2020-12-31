@@ -34,6 +34,10 @@ where
     }
 
     /// Creates a new span from a pointer and a length.
+    ///
+    /// # Safety
+    ///
+    /// Same restrictions as [from_raw_parts](std::slice::from_raw_parts) apply.
     pub unsafe fn from_raw_parts(ptr: *const T, length: usize) -> Self {
         Self {
             data: ptr,
@@ -297,6 +301,10 @@ where
     }
 
     /// Creates a new span from a pointer and a length.
+    ///
+    /// # Safety
+    ///
+    /// Same restrictions as [from_raw_parts_mut](std::slice::from_raw_parts_mut) apply.
     pub unsafe fn from_raw_parts(ptr: *mut T, length: usize) -> Self {
         Self {
             data: ptr,
@@ -322,7 +330,7 @@ where
 
     /// Checks if the span is empty.
     pub fn is_empty(&self) -> bool {
-        self.data == null_mut() || self.length == 0
+        self.data.is_null() || self.length == 0
     }
 }
 
@@ -485,7 +493,7 @@ where
     type IntoIter = Iter<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.as_ref().into_iter()
+        self.as_ref().iter()
     }
 }
 
@@ -497,6 +505,6 @@ where
     type IntoIter = IterMut<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.as_mut().into_iter()
+        self.as_mut().iter_mut()
     }
 }

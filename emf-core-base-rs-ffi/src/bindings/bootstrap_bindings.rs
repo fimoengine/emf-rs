@@ -113,75 +113,70 @@ impl InterfaceBinding for BaseInterface {
         base_module: *mut BaseT,
         get_function_fn: SysGetFunctionFn,
     ) -> &'static Self {
-        unsafe {
-            let panic_fn: SysPanicFn =
-                match get_function_fn(base_module, FnId::SysPanic).to_native() {
-                    Some(func) => std::mem::transmute(func),
-                    None => panic!(),
-                };
+        let panic_fn: SysPanicFn = match get_function_fn(base_module, FnId::SysPanic).to_native() {
+            Some(func) => std::mem::transmute(func),
+            None => panic!(),
+        };
 
-            let module_get_exported_interface_handle_fn: ModuleGetExportedInterfaceHandleFn =
-                match get_function_fn(base_module, FnId::ModuleGetExportedInterfaceHandle)
-                    .to_native()
-                {
-                    Some(func) => std::mem::transmute(func),
-                    None => {
-                        let error = CString::new(
-                            "Could not fetch the function pointer to `emf_cbase_module_get_exported_interface_handle`"
-                        ).unwrap();
-                        panic_fn(base_module, error.as_ptr());
-                    }
-                };
+        let module_get_exported_interface_handle_fn: ModuleGetExportedInterfaceHandleFn =
+            match get_function_fn(base_module, FnId::ModuleGetExportedInterfaceHandle).to_native() {
+                Some(func) => std::mem::transmute(func),
+                None => {
+                    let error = CString::new(
+                        "Could not fetch the function pointer to `emf_cbase_module_get_exported_interface_handle`"
+                    ).unwrap();
+                    panic_fn(base_module, error.as_ptr());
+                }
+            };
 
-            let module_get_interface_fn: ModuleGetInterfaceFn =
-                match get_function_fn(base_module, FnId::ModuleGetInterface).to_native() {
-                    Some(func) => std::mem::transmute(func),
-                    None => {
-                        let error = CString::new(
+        let module_get_interface_fn: ModuleGetInterfaceFn =
+            match get_function_fn(base_module, FnId::ModuleGetInterface).to_native() {
+                Some(func) => std::mem::transmute(func),
+                None => {
+                    let error = CString::new(
                         "Could not fetch the function pointer to `emf_cbase_module_get_interface`",
                     )
-                    .unwrap();
-                        panic_fn(base_module, error.as_ptr());
-                    }
-                };
-
-            let interface_handle = match module_get_exported_interface_handle_fn(
-                base_module,
-                NonNullConst::from(&BASE_INTERFACE_DESC),
-            )
-            .to_native()
-            {
-                Ok(handle) => handle,
-                Err(_) => {
-                    let error = CString::new(format!(
-                        "Could not fetch the handle to the '{}' interface module",
-                        BASE_INTERFACE_NAME
-                    ))
                     .unwrap();
                     panic_fn(base_module, error.as_ptr());
                 }
             };
 
-            match module_get_interface_fn(
-                base_module,
-                interface_handle,
-                NonNullConst::from(&BASE_INTERFACE_DESC),
-            )
-            .to_native()
-            {
-                Ok(interface) => {
-                    let base_interface: &'static BaseInterface =
-                        std::mem::transmute(interface.interface.cast::<BaseInterface>().as_ref());
-                    base_interface
-                }
-                Err(_) => {
-                    let error = CString::new(format!(
-                        "Could not initialize the bindings to the '{}' interface",
-                        BASE_INTERFACE_NAME
-                    ))
-                    .unwrap();
-                    panic_fn(base_module, error.as_ptr());
-                }
+        let interface_handle = match module_get_exported_interface_handle_fn(
+            base_module,
+            NonNullConst::from(&BASE_INTERFACE_DESC),
+        )
+        .to_native()
+        {
+            Ok(handle) => handle,
+            Err(_) => {
+                let error = CString::new(format!(
+                    "Could not fetch the handle to the '{}' interface module",
+                    BASE_INTERFACE_NAME
+                ))
+                .unwrap();
+                panic_fn(base_module, error.as_ptr());
+            }
+        };
+
+        match module_get_interface_fn(
+            base_module,
+            interface_handle,
+            NonNullConst::from(&BASE_INTERFACE_DESC),
+        )
+        .to_native()
+        {
+            Ok(interface) => {
+                let base_interface: &'static BaseInterface =
+                    std::mem::transmute(interface.interface.cast::<BaseInterface>().as_ref());
+                base_interface
+            }
+            Err(_) => {
+                let error = CString::new(format!(
+                    "Could not initialize the bindings to the '{}' interface",
+                    BASE_INTERFACE_NAME
+                ))
+                .unwrap();
+                panic_fn(base_module, error.as_ptr());
             }
         }
     }

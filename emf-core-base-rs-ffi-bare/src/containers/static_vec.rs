@@ -48,6 +48,10 @@ where
     }
 
     /// Overwrites the length of the vector.
+    ///
+    /// # Safety
+    ///
+    /// Wrong usage may lead to reading uninitialized data.
     pub unsafe fn set_len(&mut self, new_len: usize) {
         self.length = new_len;
     }
@@ -62,8 +66,8 @@ where
         if index < self.length {
             unsafe {
                 std::ptr::copy(
-                    self.as_ptr().offset(index as isize),
-                    self.as_mut_ptr().offset(index as isize + 1),
+                    self.as_ptr().add(index),
+                    self.as_mut_ptr().add(index + 1),
                     self.length - index,
                 );
             }
@@ -90,8 +94,8 @@ where
         if index < (self.length - 1) {
             unsafe {
                 std::ptr::copy(
-                    self.as_ptr().offset(index as isize + 1),
-                    self.as_mut_ptr().offset(index as isize),
+                    self.as_ptr().add(index + 1),
+                    self.as_mut_ptr().add(index),
                     self.length - 1 - index,
                 );
             }
@@ -165,6 +169,15 @@ where
     }
 }
 
+impl<T, const N: usize> Default for StaticVec<T, N>
+where
+    T: Copy + Sized,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T, const N: usize> Deref for StaticVec<T, N>
 where
     T: Copy + Sized,
@@ -234,7 +247,7 @@ impl<const N: usize> From<&'_ str> for StaticVec<u8, N> {
 
 impl<const N: usize> From<&'_ str> for StaticVec<c_char, N> {
     fn from(str: &str) -> Self {
-        unsafe { Self::from(std::mem::transmute::<&[u8], &[c_char]>(str.as_bytes())) }
+        unsafe { Self::from(&*(str.as_bytes() as *const [u8] as *const [c_char])) }
     }
 }
 
@@ -273,7 +286,7 @@ where
     type IntoIter = Iter<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.as_slice().into_iter()
+        self.as_slice().iter()
     }
 }
 
