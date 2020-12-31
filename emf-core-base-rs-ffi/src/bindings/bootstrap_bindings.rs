@@ -238,7 +238,6 @@ impl InterfaceBinding for BaseInterface {
     }
 
     #[inline]
-    #[must_use]
     unsafe fn sys_set_sync_handler(&self, sync_handler: *const SyncHandlerInterface) {
         (self.sys_set_sync_handler_fn)(self.cbase_module, sync_handler)
     }
