@@ -27,6 +27,7 @@ use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::os::raw::c_char;
 use std::ptr::{null, NonNull};
+use crate::library::OsPathChar;
 
 #[cfg(test)]
 mod tests;
@@ -523,7 +524,7 @@ impl InterfaceBinding for BaseInterface {
     unsafe fn library_load(
         &self,
         loader_handle: LibraryLoaderHandle,
-        library_path: NonNullConst<u16>,
+        library_path: NonNullConst<OsPathChar>,
     ) -> Result<LibraryHandle, LibraryError> {
         (self.library_load_fn)(self.cbase_module, loader_handle, library_path)
     }
@@ -720,7 +721,7 @@ impl InterfaceBinding for BaseInterface {
     unsafe fn module_add_module(
         &self,
         loader_handle: ModuleLoaderHandle,
-        module_path: NonNullConst<u16>,
+        module_path: NonNullConst<OsPathChar>,
     ) -> Result<ModuleHandle, ModuleError> {
         (self.module_add_module_fn)(self.cbase_module, loader_handle, module_path)
     }
@@ -845,7 +846,7 @@ impl InterfaceBinding for BaseInterface {
     unsafe fn module_get_module_path(
         &self,
         module_handle: ModuleHandle,
-    ) -> Result<NonNullConst<u16>, ModuleError> {
+    ) -> Result<NonNullConst<OsPathChar>, ModuleError> {
         (self.module_get_module_path_fn)(self.cbase_module, module_handle)
     }
 }
