@@ -1,7 +1,7 @@
 use crate::bindings::bootstrap_bindings::{BASE_INTERFACE_DESC, BASE_VERSION};
+use crate::containers::Span;
 use crate::module::InterfaceName;
 use crate::BASE_INTERFACE_NAME;
-use emf_core_base_rs_ffi_bare::containers::Span;
 
 #[test]
 fn base_version() {

@@ -5,6 +5,9 @@ use crate::sys::SyncHandlerInterface;
 use crate::{Bool, FnId, InterfaceBinding};
 use std::os::raw::c_char;
 
+#[cfg(test)]
+mod tests;
+
 #[no_mangle]
 unsafe extern "C" fn emf_cbase_sys_lock() {
     (*BASE_INTERFACE.as_ptr()).sys_lock()
