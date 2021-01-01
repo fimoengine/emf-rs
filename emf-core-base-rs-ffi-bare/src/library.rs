@@ -119,35 +119,35 @@ pub type OsPathChar = c_char;
 
 /// The handle to a library.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct LibraryHandle {
     pub id: i32,
 }
 
 /// A data symbol contained in a library.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct DataSymbol {
     pub symbol: NonNull<c_void>,
 }
 
 /// A function symbol contained in a library.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct FnSymbol {
     pub symbol: BaseFn,
 }
 
 /// The handle to a library loader.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct LoaderHandle {
     pub id: i32,
 }
 
 /// The internal handle to a library.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct LoaderLibraryHandle {
     pub id: isize,
 }
@@ -231,7 +231,7 @@ pub type LoaderInterfaceGetFunctionSymbolFn = extern "C" fn(
 
 /// Interface of a library loader.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct LoaderInterface {
     pub library_loader: *mut LibraryLoader,
     pub load_fn: LoaderInterfaceLoadFn,
@@ -267,7 +267,7 @@ pub type NativeLoaderInterfaceLoadExtFn =
 
 /// Interface of a native library loader.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct NativeLoaderInterface {
     pub library_loader_interface: LoaderInterface,
     pub load_ext_fn: NativeLoaderInterfaceLoadExtFn,

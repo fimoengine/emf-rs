@@ -6,7 +6,7 @@ use std::ptr::NonNull;
 ///
 /// Uses [NonNull] internally, as such, the same restrictions apply.
 #[repr(transparent)]
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub struct NonNullConst<T>
 where
     T: ?Sized,
