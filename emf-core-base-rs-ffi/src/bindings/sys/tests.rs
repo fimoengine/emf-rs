@@ -7,7 +7,7 @@ use crate::bindings::sys::{
 use crate::bindings::BASE_INTERFACE;
 use crate::containers::{NonNullConst, Optional};
 use crate::fn_ptr::BaseFn;
-use crate::sys::{SyncHandlerInterface, emf_cbase_sys_set_sync_handler};
+use crate::sys::{emf_cbase_sys_set_sync_handler, SyncHandlerInterface};
 use crate::{BaseInterface, Bool, FnId};
 use emf_core_base_rs_ffi_bare::BaseT;
 use std::mem::MaybeUninit;
