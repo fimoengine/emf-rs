@@ -22,6 +22,10 @@ pub trait InterfaceBinding {
     /// # Safety
     ///
     /// The parameter `get_function_fn` must be able to accept `base_module`.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if it can not initialize the binding
     unsafe fn initialize(
         base_module: *mut BaseT,
         get_function_fn: SysGetFunctionFn,

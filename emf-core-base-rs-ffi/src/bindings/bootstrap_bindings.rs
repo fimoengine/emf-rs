@@ -104,8 +104,16 @@ pub static mut BASE_INTERFACE: MaybeUninit<&'static BaseInterface> = MaybeUninit
 /// # Safety
 ///
 /// The parameter `get_function_fn` must be able to accept `base_module`.
-pub unsafe fn initialize_base_binding(base_module: *mut BaseT, get_function_fn: SysGetFunctionFn) {
+///
+/// # Panics
+///
+/// This function panics if it can not initialize the binding
+pub unsafe fn initialize_base_binding(
+    base_module: *mut BaseT,
+    get_function_fn: SysGetFunctionFn,
+) -> &'static BaseInterface {
     BASE_INTERFACE = MaybeUninit::new(BaseInterface::initialize(base_module, get_function_fn));
+    &*BASE_INTERFACE.as_ptr()
 }
 
 impl InterfaceBinding for BaseInterface {
