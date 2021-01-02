@@ -5,6 +5,9 @@ use crate::{Bool, InterfaceBinding};
 use std::os::raw::c_char;
 use std::ptr::NonNull;
 
+#[cfg(test)]
+mod tests;
+
 #[must_use]
 #[no_mangle]
 unsafe extern "C" fn emf_cbase_version_construct_short(

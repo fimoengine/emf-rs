@@ -14,8 +14,8 @@ use crate::library::{
     emf_cbase_library_unsafe_create_library_handle, emf_cbase_library_unsafe_get_loader_handle,
     emf_cbase_library_unsafe_get_loader_interface,
     emf_cbase_library_unsafe_get_loader_library_handle, emf_cbase_library_unsafe_link_library,
-    emf_cbase_library_unsafe_remove_library_handle, LibraryError,
-    LibraryHandle, LibraryType, LoaderHandle, LoaderInterface, LoaderLibraryHandle, OsPathChar,
+    emf_cbase_library_unsafe_remove_library_handle, LibraryError, LibraryHandle, LibraryType,
+    LoaderHandle, LoaderInterface, LoaderLibraryHandle, OsPathChar,
 };
 use crate::{BaseInterface, BaseT, Bool};
 use std::mem::MaybeUninit;

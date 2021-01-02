@@ -58,7 +58,7 @@ pub enum ReleaseType {
 ///
 /// If `release_type == ReleaseType::Gold` then `release_number == 0`.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Version {
     pub major: i32,
     pub minor: i32,
