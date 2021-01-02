@@ -14,7 +14,7 @@ use crate::library::{
     emf_cbase_library_unsafe_create_library_handle, emf_cbase_library_unsafe_get_loader_handle,
     emf_cbase_library_unsafe_get_loader_interface,
     emf_cbase_library_unsafe_get_loader_library_handle, emf_cbase_library_unsafe_link_library,
-    emf_cbase_library_unsafe_remove_library_handle, DataSymbol, FnSymbol, LibraryError,
+    emf_cbase_library_unsafe_remove_library_handle, LibraryError,
     LibraryHandle, LibraryType, LoaderHandle, LoaderInterface, LoaderLibraryHandle, OsPathChar,
 };
 use crate::{BaseInterface, BaseT, Bool};
@@ -342,6 +342,7 @@ fn library_unload() {
     }
 }
 
+#[test]
 fn library_get_data_symbol() {
     let mut val = false;
     let mut closure = |_: LibraryHandle, _: NonNullConst<c_char>| {
@@ -363,6 +364,7 @@ fn library_get_data_symbol() {
     }
 }
 
+#[test]
 fn library_get_function_symbol() {
     let mut val = false;
     let mut closure = |_: LibraryHandle, _: NonNullConst<c_char>| {
