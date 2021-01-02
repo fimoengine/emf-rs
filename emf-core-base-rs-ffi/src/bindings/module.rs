@@ -8,6 +8,9 @@ use crate::module::{
 use crate::{Bool, InterfaceBinding};
 use std::ptr::NonNull;
 
+#[cfg(test)]
+mod tests;
+
 #[must_use]
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]

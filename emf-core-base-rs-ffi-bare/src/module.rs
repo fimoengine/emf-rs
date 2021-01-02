@@ -197,6 +197,7 @@ use crate::fn_ptr::{SysGetFunctionFn, SysHasFunctionFn};
 use crate::library::OsPathChar;
 use crate::version::Version;
 use crate::{BaseT, Bool};
+use std::fmt::{Debug, Formatter};
 use std::os::raw::{c_char, c_void};
 use std::ptr::NonNull;
 
@@ -237,7 +238,7 @@ pub enum ModuleStatus {
 
 /// A handle to a module
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct ModuleHandle {
     pub id: i32,
 }
@@ -254,7 +255,7 @@ pub type ModuleVersion = StaticVec<c_char, 32>;
 
 /// Module info.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct ModuleInfo {
     pub name: ModuleName,
     pub version: ModuleVersion,
@@ -272,21 +273,21 @@ pub type InterfaceName = StaticVec<c_char, 32>;
 
 /// An interface.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct ModuleInterface {
     pub interface: NonNull<c_void>,
 }
 
 /// A handle to a module loader.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct LoaderHandle {
     pub id: i32,
 }
 
 /// An internal module handle used by module loaders.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct LoaderModuleHandle {
     pub id: isize,
 }
@@ -308,7 +309,7 @@ pub enum ModulePredefinedHandles {
 
 /// A descriptor of an interface.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct InterfaceDescriptor<'a> {
     pub name: InterfaceName,
     pub version: Version,
@@ -488,6 +489,57 @@ pub struct ModuleLoaderInterface {
     pub get_module_path_fn: ModuleLoaderInterfaceGetModulePathFn,
 }
 
+impl Debug for ModuleLoaderInterface {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ModuleLoaderInterface")
+            .field("module_loader", &self.module_loader)
+            .field("add_module_fn", &self.add_module_fn)
+            .field("remove_module_fn", &self.remove_module_fn)
+            .field("fetch_status_fn", &self.fetch_status_fn)
+            .field("load_fn", &self.load_fn)
+            .field("unload_fn", &self.unload_fn)
+            .field("initialize_fn", &self.initialize_fn)
+            .field("terminate_fn", &self.terminate_fn)
+            .field("get_module_info_fn", &self.get_module_info_fn)
+            .field(
+                "get_exportable_interfaces_fn",
+                &self.get_exportable_interfaces_fn,
+            )
+            .field(
+                "get_runtime_dependencies_fn",
+                &self.get_runtime_dependencies_fn,
+            )
+            .field(
+                "get_interface_fn",
+                &(self.get_interface_fn as *const c_void),
+            )
+            .field("get_load_dependencies_fn", &self.get_load_dependencies_fn)
+            .field("get_module_path_fn", &self.get_module_path_fn)
+            .finish()
+    }
+}
+
+impl PartialEq for ModuleLoaderInterface {
+    fn eq(&self, other: &Self) -> bool {
+        self.module_loader == other.module_loader
+            && self.add_module_fn == other.add_module_fn
+            && self.remove_module_fn == other.remove_module_fn
+            && self.fetch_status_fn == other.fetch_status_fn
+            && self.load_fn == other.load_fn
+            && self.unload_fn == other.unload_fn
+            && self.initialize_fn == other.initialize_fn
+            && self.terminate_fn == other.terminate_fn
+            && self.get_module_info_fn == other.get_module_info_fn
+            && self.get_exportable_interfaces_fn == other.get_exportable_interfaces_fn
+            && self.get_runtime_dependencies_fn == other.get_runtime_dependencies_fn
+            && (self.get_interface_fn as *const c_void) == (other.get_interface_fn as *const c_void)
+            && self.get_load_dependencies_fn == other.get_load_dependencies_fn
+            && self.get_module_path_fn == other.get_module_path_fn
+    }
+}
+
+impl Eq for ModuleLoaderInterface {}
+
 /// An opaque structure representing a native module.
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -575,6 +627,31 @@ pub struct NativeModuleInterface {
     pub get_load_dependencies_fn: NativeModuleInterfaceGetLoadDependenciesFn,
 }
 
+impl Debug for NativeModuleInterface {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NativeModuleInterface")
+            .field("load_fn", &self.load_fn)
+            .field("unload_fn", &self.unload_fn)
+            .field("initialize_fn", &self.initialize_fn)
+            .field("terminate_fn", &self.terminate_fn)
+            .field("get_module_info_fn", &self.get_module_info_fn)
+            .field(
+                "get_exportable_interfaces_fn",
+                &self.get_exportable_interfaces_fn,
+            )
+            .field(
+                "get_runtime_dependencies_fn",
+                &self.get_runtime_dependencies_fn,
+            )
+            .field(
+                "get_interface_fn",
+                &(self.get_interface_fn as *const c_void),
+            )
+            .field("get_load_dependencies_fn", &self.get_load_dependencies_fn)
+            .finish()
+    }
+}
+
 /// A function pointer to a `get_native_module` function.
 ///
 /// The function returns a pointer to the native module.
@@ -586,7 +663,7 @@ pub type NativeModuleLoaderInterfaceGetNativeModuleFn =
 
 /// Interface of the native module loader.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct NativeModuleLoader {
     pub module_loader_interface: ModuleLoaderInterface,
     pub get_native_module_fn: NativeModuleLoaderInterfaceGetNativeModuleFn,
