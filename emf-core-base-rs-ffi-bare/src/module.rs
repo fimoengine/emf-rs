@@ -532,7 +532,10 @@ impl PartialEq for ModuleLoaderInterface {
             && self.get_module_info_fn == other.get_module_info_fn
             && self.get_exportable_interfaces_fn == other.get_exportable_interfaces_fn
             && self.get_runtime_dependencies_fn == other.get_runtime_dependencies_fn
-            && (self.get_interface_fn as *const c_void) == (other.get_interface_fn as *const c_void)
+            && std::ptr::eq(
+                self.get_interface_fn as *const c_void,
+                other.get_interface_fn as *const c_void,
+            )
             && self.get_load_dependencies_fn == other.get_load_dependencies_fn
             && self.get_module_path_fn == other.get_module_path_fn
     }
@@ -651,6 +654,25 @@ impl Debug for NativeModuleInterface {
             .finish()
     }
 }
+
+impl PartialEq for NativeModuleInterface {
+    fn eq(&self, other: &Self) -> bool {
+        self.load_fn == other.load_fn
+            && self.unload_fn == other.unload_fn
+            && self.initialize_fn == other.initialize_fn
+            && self.terminate_fn == other.terminate_fn
+            && self.get_module_info_fn == other.get_module_info_fn
+            && self.get_exportable_interfaces_fn == other.get_exportable_interfaces_fn
+            && self.get_runtime_dependencies_fn == other.get_runtime_dependencies_fn
+            && std::ptr::eq(
+                self.get_interface_fn as *const c_void,
+                other.get_interface_fn as *const c_void,
+            )
+            && self.get_load_dependencies_fn == other.get_load_dependencies_fn
+    }
+}
+
+impl Eq for NativeModuleInterface {}
 
 /// A function pointer to a `get_native_module` function.
 ///
