@@ -13,7 +13,8 @@ use crate::module::{
 use crate::sys::SyncHandlerInterface;
 use crate::version::{ReleaseType, Version, VersionError};
 use crate::{BaseT, Bool, FnId, InterfaceBinding};
-use std::os::raw::c_char;
+use std::fmt::{Debug, Formatter};
+use std::os::raw::{c_char, c_void};
 use std::ptr::NonNull;
 
 /// Name of the `emf-core-base` interface.
@@ -106,6 +107,361 @@ pub struct BaseInterface {
     pub module_get_interface_fn: ModuleGetInterfaceFn,
     pub module_get_module_path_fn: ModuleGetModulePathFn,
 }
+
+impl Debug for BaseInterface {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BaseInterface")
+            .field("interface_version", &self.interface_version)
+            .field("cbase_module", &self.cbase_module)
+            .field("sys_lock_fn", &self.sys_lock_fn)
+            .field("sys_try_lock_fn", &self.sys_try_lock_fn)
+            .field("sys_unlock_fn", &self.sys_unlock_fn)
+            .field("sys_shutdown_fn", &self.sys_shutdown_fn)
+            .field("sys_panic_fn", &self.sys_panic_fn)
+            .field("sys_has_function_fn", &self.sys_has_function_fn)
+            .field("sys_get_function_fn", &self.sys_get_function_fn)
+            .field("sys_get_sync_handler_fn", &self.sys_get_sync_handler_fn)
+            .field("sys_set_sync_handler_fn", &self.sys_set_sync_handler_fn)
+            .field(
+                "version_construct_short_fn",
+                &self.version_construct_short_fn,
+            )
+            .field("version_construct_long_fn", &self.version_construct_long_fn)
+            .field("version_construct_full_fn", &self.version_construct_full_fn)
+            .field(
+                "version_construct_from_string_fn",
+                &(self.version_construct_from_string_fn as *const c_void),
+            )
+            .field(
+                "version_representation_is_valid_fn",
+                &(self.version_representation_is_valid_fn as *const c_void),
+            )
+            .field(
+                "version_get_short_representation_fn",
+                &(self.version_get_short_representation_fn as *const c_void),
+            )
+            .field(
+                "version_get_short_representation_length_fn",
+                &self.version_get_short_representation_length_fn,
+            )
+            .field(
+                "version_get_long_representation_fn",
+                &(self.version_get_long_representation_fn as *const c_void),
+            )
+            .field(
+                "version_get_long_representation_length_fn",
+                &self.version_get_long_representation_length_fn,
+            )
+            .field(
+                "version_get_full_representation_fn",
+                &(self.version_get_full_representation_fn as *const c_void),
+            )
+            .field(
+                "version_get_full_representation_length_fn",
+                &self.version_get_full_representation_length_fn,
+            )
+            .field("version_compare_fn", &self.version_compare_fn)
+            .field("version_compare_weak_fn", &self.version_compare_weak_fn)
+            .field("version_compare_strong_fn", &self.version_compare_strong_fn)
+            .field("version_is_compatible_fn", &self.version_is_compatible_fn)
+            .field(
+                "library_register_loader_fn",
+                &self.library_register_loader_fn,
+            )
+            .field(
+                "library_unregister_loader_fn",
+                &self.library_unregister_loader_fn,
+            )
+            .field(
+                "library_get_num_loaders_fn",
+                &self.library_get_num_loaders_fn,
+            )
+            .field(
+                "library_get_library_types_fn",
+                &(self.library_get_library_types_fn as *const c_void),
+            )
+            .field(
+                "library_get_loader_handle_fn",
+                &self.library_get_loader_handle_fn,
+            )
+            .field("library_type_exists_fn", &self.library_type_exists_fn)
+            .field("library_library_exists_fn", &self.library_library_exists_fn)
+            .field(
+                "library_unsafe_create_library_handle_fn",
+                &self.library_unsafe_create_library_handle_fn,
+            )
+            .field(
+                "library_unsafe_remove_library_handle_fn",
+                &self.library_unsafe_remove_library_handle_fn,
+            )
+            .field(
+                "library_unsafe_link_library_fn",
+                &self.library_unsafe_link_library_fn,
+            )
+            .field(
+                "library_unsafe_get_loader_library_handle_fn",
+                &self.library_unsafe_get_loader_library_handle_fn,
+            )
+            .field(
+                "library_unsafe_get_loader_handle_fn",
+                &self.library_unsafe_get_loader_handle_fn,
+            )
+            .field(
+                "library_unsafe_get_loader_interface_fn",
+                &self.library_unsafe_get_loader_interface_fn,
+            )
+            .field("library_load_fn", &self.library_load_fn)
+            .field("library_unload_fn", &self.library_unload_fn)
+            .field(
+                "library_get_data_symbol_fn",
+                &self.library_get_data_symbol_fn,
+            )
+            .field(
+                "library_get_function_symbol_fn",
+                &self.library_get_function_symbol_fn,
+            )
+            .field("module_register_loader_fn", &self.module_register_loader_fn)
+            .field(
+                "module_unregister_loader_fn",
+                &self.module_unregister_loader_fn,
+            )
+            .field("module_get_num_loaders_fn", &self.module_get_num_loaders_fn)
+            .field(
+                "module_get_module_types_fn",
+                &(self.module_get_module_types_fn as *const c_void),
+            )
+            .field("module_get_num_modules_fn", &self.module_get_num_modules_fn)
+            .field(
+                "module_get_modules_fn",
+                &(self.module_get_modules_fn as *const c_void),
+            )
+            .field(
+                "module_get_num_exported_interfaces_fn",
+                &self.module_get_num_exported_interfaces_fn,
+            )
+            .field(
+                "module_get_exported_interfaces_fn",
+                &(self.module_get_exported_interfaces_fn as *const c_void),
+            )
+            .field(
+                "module_get_loader_handle_fn",
+                &self.module_get_loader_handle_fn,
+            )
+            .field("module_type_exists_fn", &self.module_type_exists_fn)
+            .field("module_module_exists_fn", &self.module_module_exists_fn)
+            .field(
+                "module_get_exported_interface_handle_fn",
+                &(self.module_get_exported_interface_handle_fn as *const c_void),
+            )
+            .field(
+                "module_exported_interface_exists_fn",
+                &(self.module_exported_interface_exists_fn as *const c_void),
+            )
+            .field(
+                "module_unsafe_create_module_handle_fn",
+                &self.module_unsafe_create_module_handle_fn,
+            )
+            .field(
+                "module_unsafe_remove_module_handle_fn",
+                &self.module_unsafe_remove_module_handle_fn,
+            )
+            .field(
+                "module_unsafe_link_module_fn",
+                &self.module_unsafe_link_module_fn,
+            )
+            .field(
+                "module_unsafe_get_loader_module_handle_fn",
+                &self.module_unsafe_get_loader_module_handle_fn,
+            )
+            .field(
+                "module_unsafe_get_loader_handle_fn",
+                &self.module_unsafe_get_loader_handle_fn,
+            )
+            .field(
+                "module_unsafe_get_loader_fn",
+                &self.module_unsafe_get_loader_fn,
+            )
+            .field("module_add_module_fn", &self.module_add_module_fn)
+            .field("module_remove_module_fn", &self.module_remove_module_fn)
+            .field(
+                "module_get_load_dependencies_fn",
+                &self.module_get_load_dependencies_fn,
+            )
+            .field("module_fetch_status_fn", &self.module_fetch_status_fn)
+            .field(
+                "module_add_dependency_fn",
+                &(self.module_add_dependency_fn as *const c_void),
+            )
+            .field(
+                "module_remove_dependency_fn",
+                &(self.module_remove_dependency_fn as *const c_void),
+            )
+            .field(
+                "module_export_interface_fn",
+                &(self.module_export_interface_fn as *const c_void),
+            )
+            .field("module_load_fn", &self.module_load_fn)
+            .field("module_unload_fn", &self.module_unload_fn)
+            .field("module_initialize_fn", &self.module_initialize_fn)
+            .field("module_terminate_fn", &self.module_terminate_fn)
+            .field("module_get_module_info_fn", &self.module_get_module_info_fn)
+            .field(
+                "module_get_exportable_interfaces_fn",
+                &self.module_get_exportable_interfaces_fn,
+            )
+            .field(
+                "module_get_runtime_dependencies_fn",
+                &self.module_get_runtime_dependencies_fn,
+            )
+            .field(
+                "module_get_interface_fn",
+                &(self.module_get_interface_fn as *const c_void),
+            )
+            .field("module_get_module_path_fn", &self.module_get_module_path_fn)
+            .finish()
+    }
+}
+
+impl PartialEq for BaseInterface {
+    fn eq(&self, other: &Self) -> bool {
+        self.interface_version == other.interface_version
+            && self.cbase_module == other.cbase_module
+            && self.sys_lock_fn == other.sys_lock_fn
+            && self.sys_try_lock_fn == other.sys_try_lock_fn
+            && self.sys_unlock_fn == other.sys_unlock_fn
+            && self.sys_shutdown_fn == other.sys_shutdown_fn
+            && self.sys_panic_fn == other.sys_panic_fn
+            && self.sys_has_function_fn == other.sys_has_function_fn
+            && self.sys_get_function_fn == other.sys_get_function_fn
+            && self.sys_get_sync_handler_fn == other.sys_get_sync_handler_fn
+            && self.sys_set_sync_handler_fn == other.sys_set_sync_handler_fn
+            && self.version_construct_short_fn == other.version_construct_short_fn
+            && self.version_construct_long_fn == other.version_construct_long_fn
+            && self.version_construct_full_fn == other.version_construct_full_fn
+            && std::ptr::eq(
+                self.version_construct_from_string_fn as *const c_void,
+                other.version_construct_from_string_fn as *const c_void,
+            )
+            && std::ptr::eq(
+                self.version_representation_is_valid_fn as *const c_void,
+                other.version_representation_is_valid_fn as *const c_void,
+            )
+            && std::ptr::eq(
+                self.version_get_short_representation_fn as *const c_void,
+                other.version_get_short_representation_fn as *const c_void,
+            )
+            && self.version_get_short_representation_length_fn
+                == other.version_get_short_representation_length_fn
+            && std::ptr::eq(
+                self.version_get_long_representation_fn as *const c_void,
+                other.version_get_long_representation_fn as *const c_void,
+            )
+            && self.version_get_long_representation_length_fn
+                == other.version_get_long_representation_length_fn
+            && std::ptr::eq(
+                self.version_get_full_representation_fn as *const c_void,
+                other.version_get_full_representation_fn as *const c_void,
+            )
+            && self.version_get_full_representation_length_fn
+                == other.version_get_full_representation_length_fn
+            && self.version_compare_fn == other.version_compare_fn
+            && self.version_compare_weak_fn == other.version_compare_weak_fn
+            && self.version_compare_strong_fn == other.version_compare_strong_fn
+            && self.version_is_compatible_fn == other.version_is_compatible_fn
+            && self.library_register_loader_fn == other.library_register_loader_fn
+            && self.library_unregister_loader_fn == other.library_unregister_loader_fn
+            && self.library_get_num_loaders_fn == other.library_get_num_loaders_fn
+            && std::ptr::eq(
+                self.library_get_library_types_fn as *const c_void,
+                other.library_get_library_types_fn as *const c_void,
+            )
+            && self.library_get_loader_handle_fn == other.library_get_loader_handle_fn
+            && self.library_type_exists_fn == other.library_type_exists_fn
+            && self.library_library_exists_fn == other.library_library_exists_fn
+            && self.library_unsafe_create_library_handle_fn
+                == other.library_unsafe_create_library_handle_fn
+            && self.library_unsafe_remove_library_handle_fn
+                == other.library_unsafe_remove_library_handle_fn
+            && self.library_unsafe_link_library_fn == other.library_unsafe_link_library_fn
+            && self.library_unsafe_get_loader_library_handle_fn
+                == other.library_unsafe_get_loader_library_handle_fn
+            && self.library_unsafe_get_loader_handle_fn == other.library_unsafe_get_loader_handle_fn
+            && self.library_unsafe_get_loader_interface_fn
+                == other.library_unsafe_get_loader_interface_fn
+            && self.library_load_fn == other.library_load_fn
+            && self.library_unload_fn == other.library_unload_fn
+            && self.library_get_data_symbol_fn == other.library_get_data_symbol_fn
+            && self.library_get_function_symbol_fn == other.library_get_function_symbol_fn
+            && self.module_register_loader_fn == other.module_register_loader_fn
+            && self.module_unregister_loader_fn == other.module_unregister_loader_fn
+            && self.module_get_num_loaders_fn == other.module_get_num_loaders_fn
+            && std::ptr::eq(
+                self.module_get_module_types_fn as *const c_void,
+                other.module_get_module_types_fn as *const c_void,
+            )
+            && self.module_get_num_modules_fn == other.module_get_num_modules_fn
+            && std::ptr::eq(
+                self.module_get_modules_fn as *const c_void,
+                other.module_get_modules_fn as *const c_void,
+            )
+            && self.module_get_num_exported_interfaces_fn
+                == other.module_get_num_exported_interfaces_fn
+            && std::ptr::eq(
+                self.module_get_exported_interfaces_fn as *const c_void,
+                other.module_get_exported_interfaces_fn as *const c_void,
+            )
+            && self.module_get_loader_handle_fn == other.module_get_loader_handle_fn
+            && self.module_type_exists_fn == other.module_type_exists_fn
+            && self.module_module_exists_fn == other.module_module_exists_fn
+            && std::ptr::eq(
+                self.module_get_exported_interface_handle_fn as *const c_void,
+                other.module_get_exported_interface_handle_fn as *const c_void,
+            )
+            && std::ptr::eq(
+                self.module_exported_interface_exists_fn as *const c_void,
+                other.module_exported_interface_exists_fn as *const c_void,
+            )
+            && self.module_unsafe_create_module_handle_fn
+                == other.module_unsafe_create_module_handle_fn
+            && self.module_unsafe_remove_module_handle_fn
+                == other.module_unsafe_remove_module_handle_fn
+            && self.module_unsafe_link_module_fn == other.module_unsafe_link_module_fn
+            && self.module_unsafe_get_loader_module_handle_fn
+                == other.module_unsafe_get_loader_module_handle_fn
+            && self.module_unsafe_get_loader_handle_fn == other.module_unsafe_get_loader_handle_fn
+            && self.module_unsafe_get_loader_fn == other.module_unsafe_get_loader_fn
+            && self.module_add_module_fn == other.module_add_module_fn
+            && self.module_remove_module_fn == other.module_remove_module_fn
+            && self.module_get_load_dependencies_fn == other.module_get_load_dependencies_fn
+            && self.module_fetch_status_fn == other.module_fetch_status_fn
+            && std::ptr::eq(
+                self.module_add_dependency_fn as *const c_void,
+                other.module_add_dependency_fn as *const c_void,
+            )
+            && std::ptr::eq(
+                self.module_remove_dependency_fn as *const c_void,
+                other.module_remove_dependency_fn as *const c_void,
+            )
+            && std::ptr::eq(
+                self.module_export_interface_fn as *const c_void,
+                other.module_export_interface_fn as *const c_void,
+            )
+            && self.module_load_fn == other.module_load_fn
+            && self.module_unload_fn == other.module_unload_fn
+            && self.module_initialize_fn == other.module_initialize_fn
+            && self.module_terminate_fn == other.module_terminate_fn
+            && self.module_get_module_info_fn == other.module_get_module_info_fn
+            && self.module_get_exportable_interfaces_fn == other.module_get_exportable_interfaces_fn
+            && self.module_get_runtime_dependencies_fn == other.module_get_runtime_dependencies_fn
+            && std::ptr::eq(
+                self.module_get_interface_fn as *const c_void,
+                other.module_get_interface_fn as *const c_void,
+            )
+            && self.module_get_module_path_fn == other.module_get_module_path_fn
+    }
+}
+
+impl Eq for BaseInterface {}
 
 impl InterfaceBinding for BaseInterface {
     #[inline]
