@@ -9,3 +9,5 @@
 //! This crate is intended by the implementors of the `emf-core-base` interface.
 
 pub use emf_core_base_rs_ffi_bare as ffi;
+
+pub mod version;
