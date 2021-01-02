@@ -191,6 +191,48 @@ pub struct LibraryLoader {
     _private: [u8; 0],
 }
 
+/// A trait giving access to the functions of a `LibraryLoader`.
+pub trait LibraryLoaderInterfaceBinding {
+    /// Loads a library using the `LibraryLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn load(
+        &self,
+        library_path: NonNullConst<OsPathChar>,
+    ) -> Result<LoaderLibraryHandle, LibraryError>;
+
+    /// Unloads a library using the `LibraryLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn unload(&self, library_handle: LoaderLibraryHandle) -> Optional<LibraryError>;
+
+    /// Fetches a data symbol from a library using the `LibraryLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn get_data_symbol(
+        &self,
+        library_handle: LoaderLibraryHandle,
+        symbol_name: NonNullConst<c_char>,
+    ) -> Result<DataSymbol, LibraryError>;
+
+    /// Fetches a function symbol from a library using the `LibraryLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn get_function_symbol(
+        &self,
+        library_handle: LoaderLibraryHandle,
+        symbol_name: NonNullConst<c_char>,
+    ) -> Result<FnSymbol, LibraryError>;
+}
+
 /// A function pointer to a `load` function.
 ///
 /// The function loads the library, which is located at `library_path`, and returns its handle.
@@ -240,6 +282,67 @@ pub struct LoaderInterface {
     pub get_function_symbol_fn: LoaderInterfaceGetFunctionSymbolFn,
 }
 
+impl LibraryLoaderInterfaceBinding for LoaderInterface {
+    #[inline]
+    unsafe fn load(
+        &self,
+        library_path: NonNullConst<OsPathChar>,
+    ) -> Result<LoaderLibraryHandle, LibraryError> {
+        (self.load_fn)(self.library_loader, library_path)
+    }
+
+    #[inline]
+    unsafe fn unload(&self, library_handle: LoaderLibraryHandle) -> Optional<LibraryError> {
+        (self.unload_fn)(self.library_loader, library_handle)
+    }
+
+    #[inline]
+    unsafe fn get_data_symbol(
+        &self,
+        library_handle: LoaderLibraryHandle,
+        symbol_name: NonNullConst<c_char>,
+    ) -> Result<DataSymbol, LibraryError> {
+        (self.get_data_symbol_fn)(self.library_loader, library_handle, symbol_name)
+    }
+
+    #[inline]
+    unsafe fn get_function_symbol(
+        &self,
+        library_handle: LoaderLibraryHandle,
+        symbol_name: NonNullConst<c_char>,
+    ) -> Result<FnSymbol, LibraryError> {
+        (self.get_function_symbol_fn)(self.library_loader, library_handle, symbol_name)
+    }
+}
+
+/// A trait giving access to the functions of a `NativeLibraryLoader`.
+pub trait NativeLibraryLoaderInterfaceBinding: LibraryLoaderInterfaceBinding {
+    /// Loads a library using the `NativeLibraryLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api, elides lifetimes and is os specific.
+    #[cfg(target_os = "windows")]
+    unsafe fn load_ext(
+        &self,
+        library_path: NonNullConst<OsPathChar>,
+        h_file: *mut c_void,
+        flags: u32,
+    ) -> Result<LoaderLibraryHandle, LibraryError>;
+
+    /// Loads a library using the `NativeLibraryLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api, elides lifetimes and is os specific.
+    #[cfg(not(target_os = "windows"))]
+    unsafe fn load_ext(
+        &self,
+        library_path: NonNullConst<OsPathChar>,
+        flags: c_int,
+    ) -> Result<LoaderLibraryHandle, LibraryError>;
+}
+
 /// A function pointer to a `load_ext` function.
 ///
 /// The function loads the library, which is located at `library_path`, and returns its handle.
@@ -271,6 +374,73 @@ pub type NativeLoaderInterfaceLoadExtFn =
 pub struct NativeLoaderInterface {
     pub library_loader_interface: LoaderInterface,
     pub load_ext_fn: NativeLoaderInterfaceLoadExtFn,
+}
+
+impl LibraryLoaderInterfaceBinding for NativeLoaderInterface {
+    #[inline]
+    unsafe fn load(
+        &self,
+        library_path: NonNullConst<OsPathChar>,
+    ) -> Result<LoaderLibraryHandle, LibraryError> {
+        self.library_loader_interface.load(library_path)
+    }
+
+    #[inline]
+    unsafe fn unload(&self, library_handle: LoaderLibraryHandle) -> Optional<LibraryError> {
+        self.library_loader_interface.unload(library_handle)
+    }
+
+    #[inline]
+    unsafe fn get_data_symbol(
+        &self,
+        library_handle: LoaderLibraryHandle,
+        symbol_name: NonNullConst<c_char>,
+    ) -> Result<DataSymbol, LibraryError> {
+        self.library_loader_interface
+            .get_data_symbol(library_handle, symbol_name)
+    }
+
+    #[inline]
+    unsafe fn get_function_symbol(
+        &self,
+        library_handle: LoaderLibraryHandle,
+        symbol_name: NonNullConst<c_char>,
+    ) -> Result<FnSymbol, LibraryError> {
+        self.library_loader_interface
+            .get_function_symbol(library_handle, symbol_name)
+    }
+}
+
+impl NativeLibraryLoaderInterfaceBinding for NativeLoaderInterface {
+    #[inline]
+    #[cfg(target_os = "windows")]
+    unsafe fn load_ext(
+        &self,
+        library_path: NonNullConst<OsPathChar>,
+        h_file: *mut c_void,
+        flags: u32,
+    ) -> Result<LoaderLibraryHandle, LibraryError> {
+        (self.load_ext_fn)(
+            self.library_loader_interface.library_loader,
+            library_path,
+            h_file,
+            flags,
+        )
+    }
+
+    #[inline]
+    #[cfg(not(target_os = "windows"))]
+    unsafe fn load_ext(
+        &self,
+        library_path: NonNullConst<OsPathChar>,
+        flags: c_int,
+    ) -> Result<LoaderLibraryHandle, LibraryError> {
+        (self.load_ext_fn)(
+            self.library_loader_interface.library_loader,
+            library_path,
+            flags,
+        )
+    }
 }
 
 extern "C" {

@@ -11,6 +11,30 @@ pub struct SyncHandler {
     _private: [u8; 0],
 }
 
+/// A trait giving access to the functions of a `SyncHandler`.
+pub trait SyncHandlerInterfaceBinding {
+    /// Locks the interface using the `SyncHandler`.
+    ///
+    /// # Safety
+    ///
+    /// Manual locking is discouraged as it can lead to deadlocks.
+    unsafe fn lock(&self);
+
+    /// Locks the interface using the `SyncHandler` without blocking.
+    ///
+    /// # Safety
+    ///
+    /// Manual locking is discouraged as it can lead to deadlocks.
+    unsafe fn try_lock(&self) -> Bool;
+
+    /// Unlocks the interface using the `SyncHandler`.
+    ///
+    /// # Safety
+    ///
+    /// Trying to unlock the interface when it is not locked leads to undefined behaviour.
+    unsafe fn unlock(&self);
+}
+
 /// A function pointer to a `lock` function.
 ///
 /// The lock function must have the following properties:
@@ -54,6 +78,23 @@ pub struct SyncHandlerInterface {
     pub lock_fn: SyncHandlerLockFn,
     pub try_lock_fn: SyncHandlerTryLockFn,
     pub unlock_fn: SyncHandlerUnlockFn,
+}
+
+impl SyncHandlerInterfaceBinding for SyncHandlerInterface {
+    #[inline]
+    unsafe fn lock(&self) {
+        (self.lock_fn)(self.sync_handler)
+    }
+
+    #[inline]
+    unsafe fn try_lock(&self) -> Bool {
+        (self.try_lock_fn)(self.sync_handler)
+    }
+
+    #[inline]
+    unsafe fn unlock(&self) {
+        (self.unlock_fn)(self.sync_handler)
+    }
 }
 
 extern "C" {

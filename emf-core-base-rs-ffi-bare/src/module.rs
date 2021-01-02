@@ -344,6 +344,125 @@ pub struct ModuleLoader {
     _private: [u8; 0],
 }
 
+/// A trait giving access to the functions of a `ModuleLoader`.
+pub trait ModuleLoaderInterfaceBinding {
+    /// Adds a new module using the `ModuleLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn add_module(
+        &self,
+        module_path: NonNullConst<OsPathChar>,
+    ) -> Result<LoaderModuleHandle, ModuleError>;
+
+    /// Removes a module using the `ModuleLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn remove_module(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError>;
+
+    /// Fetches the status of a module using the `ModuleLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn fetch_status(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<ModuleStatus, ModuleError>;
+
+    /// Loads a module using the `ModuleLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn load(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError>;
+
+    /// Unloads a module using the `ModuleLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn unload(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError>;
+
+    /// Initializes a module using the `ModuleLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn initialize(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError>;
+
+    /// Terminates a module using the `ModuleLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn terminate(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError>;
+
+    /// Fetches the module info of a module using the `ModuleLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn get_module_info(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<NonNullConst<ModuleInfo>, ModuleError>;
+
+    /// Fetches the exportable interfaces of a module using the `ModuleLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn get_exportable_interfaces(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<Span<'static, InterfaceDescriptor<'static>>, ModuleError>;
+
+    /// Fetches the runtime dependencies of a module using the `ModuleLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn get_runtime_dependencies(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<Span<'static, InterfaceDescriptor<'static>>, ModuleError>;
+
+    /// Fetches an interface of a module using the `ModuleLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn get_interface(
+        &self,
+        module_handle: LoaderModuleHandle,
+        interface_descriptor: NonNullConst<InterfaceDescriptor>,
+    ) -> Result<ModuleInterface, ModuleError>;
+
+    /// Fetches the load dependencies of a module using the `ModuleLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn get_load_dependencies(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<Span<'static, InterfaceDescriptor<'static>>, ModuleError>;
+
+    /// Fetches the module path of a module using the `ModuleLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn get_module_path(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<NonNullConst<OsPathChar>, ModuleError>;
+}
+
 /// A function pointer to a `add_module` function.
 ///
 /// This function loads the module, which is located at `module_path`, and returns its handle.
@@ -487,6 +606,98 @@ pub struct ModuleLoaderInterface {
     pub get_interface_fn: ModuleLoaderInterfaceGetInterfaceFn,
     pub get_load_dependencies_fn: ModuleLoaderInterfaceGetLoadDependenciesFn,
     pub get_module_path_fn: ModuleLoaderInterfaceGetModulePathFn,
+}
+
+impl ModuleLoaderInterfaceBinding for ModuleLoaderInterface {
+    #[inline]
+    unsafe fn add_module(
+        &self,
+        module_path: NonNullConst<OsPathChar>,
+    ) -> Result<LoaderModuleHandle, ModuleError> {
+        (self.add_module_fn)(self.module_loader, module_path)
+    }
+
+    #[inline]
+    unsafe fn remove_module(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError> {
+        (self.remove_module_fn)(self.module_loader, module_handle)
+    }
+
+    #[inline]
+    unsafe fn fetch_status(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<ModuleStatus, ModuleError> {
+        (self.fetch_status_fn)(self.module_loader, module_handle)
+    }
+
+    #[inline]
+    unsafe fn load(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError> {
+        (self.load_fn)(self.module_loader, module_handle)
+    }
+
+    #[inline]
+    unsafe fn unload(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError> {
+        (self.unload_fn)(self.module_loader, module_handle)
+    }
+
+    #[inline]
+    unsafe fn initialize(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError> {
+        (self.initialize_fn)(self.module_loader, module_handle)
+    }
+
+    #[inline]
+    unsafe fn terminate(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError> {
+        (self.terminate_fn)(self.module_loader, module_handle)
+    }
+
+    #[inline]
+    unsafe fn get_module_info(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<NonNullConst<ModuleInfo>, ModuleError> {
+        (self.get_module_info_fn)(self.module_loader, module_handle)
+    }
+
+    #[inline]
+    unsafe fn get_exportable_interfaces(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<Span<'static, InterfaceDescriptor<'static>>, ModuleError> {
+        (self.get_exportable_interfaces_fn)(self.module_loader, module_handle)
+    }
+
+    #[inline]
+    unsafe fn get_runtime_dependencies(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<Span<'static, InterfaceDescriptor<'static>>, ModuleError> {
+        (self.get_runtime_dependencies_fn)(self.module_loader, module_handle)
+    }
+
+    #[inline]
+    unsafe fn get_interface(
+        &self,
+        module_handle: LoaderModuleHandle,
+        interface_descriptor: NonNullConst<InterfaceDescriptor>,
+    ) -> Result<ModuleInterface, ModuleError> {
+        (self.get_interface_fn)(self.module_loader, module_handle, interface_descriptor)
+    }
+
+    #[inline]
+    unsafe fn get_load_dependencies(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<Span<'static, InterfaceDescriptor<'static>>, ModuleError> {
+        (self.get_load_dependencies_fn)(self.module_loader, module_handle)
+    }
+
+    #[inline]
+    unsafe fn get_module_path(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<NonNullConst<OsPathChar>, ModuleError> {
+        (self.get_module_path_fn)(self.module_loader, module_handle)
+    }
 }
 
 impl Debug for ModuleLoaderInterface {
@@ -674,6 +885,19 @@ impl PartialEq for NativeModuleInterface {
 
 impl Eq for NativeModuleInterface {}
 
+/// A trait giving access to the functions of a `NativeModuleLoader`.
+pub trait NativeModuleLoaderInterfaceBinding: ModuleLoaderInterfaceBinding {
+    /// Fetches a pointer which can be used with the functions of a `NativeModule` using the `ModuleLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn get_native_module(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<*mut NativeModule, ModuleError>;
+}
+
 /// A function pointer to a `get_native_module` function.
 ///
 /// The function returns a pointer to the native module.
@@ -686,9 +910,115 @@ pub type NativeModuleLoaderInterfaceGetNativeModuleFn =
 /// Interface of the native module loader.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct NativeModuleLoader {
+pub struct NativeModuleLoaderInterface {
     pub module_loader_interface: ModuleLoaderInterface,
     pub get_native_module_fn: NativeModuleLoaderInterfaceGetNativeModuleFn,
+}
+
+impl ModuleLoaderInterfaceBinding for NativeModuleLoaderInterface {
+    #[inline]
+    unsafe fn add_module(
+        &self,
+        module_path: NonNullConst<OsPathChar>,
+    ) -> Result<LoaderModuleHandle, ModuleError> {
+        self.module_loader_interface.add_module(module_path)
+    }
+
+    #[inline]
+    unsafe fn remove_module(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError> {
+        self.module_loader_interface.remove_module(module_handle)
+    }
+
+    #[inline]
+    unsafe fn fetch_status(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<ModuleStatus, ModuleError> {
+        self.module_loader_interface.fetch_status(module_handle)
+    }
+
+    #[inline]
+    unsafe fn load(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError> {
+        self.module_loader_interface.load(module_handle)
+    }
+
+    #[inline]
+    unsafe fn unload(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError> {
+        self.module_loader_interface.unload(module_handle)
+    }
+
+    #[inline]
+    unsafe fn initialize(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError> {
+        self.module_loader_interface.initialize(module_handle)
+    }
+
+    #[inline]
+    unsafe fn terminate(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError> {
+        self.module_loader_interface.initialize(module_handle)
+    }
+
+    #[inline]
+    unsafe fn get_module_info(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<NonNullConst<ModuleInfo>, ModuleError> {
+        self.module_loader_interface.get_module_info(module_handle)
+    }
+
+    #[inline]
+    unsafe fn get_exportable_interfaces(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<Span<'static, InterfaceDescriptor<'static>>, ModuleError> {
+        self.module_loader_interface
+            .get_exportable_interfaces(module_handle)
+    }
+
+    #[inline]
+    unsafe fn get_runtime_dependencies(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<Span<'static, InterfaceDescriptor<'static>>, ModuleError> {
+        self.module_loader_interface
+            .get_runtime_dependencies(module_handle)
+    }
+
+    #[inline]
+    unsafe fn get_interface(
+        &self,
+        module_handle: LoaderModuleHandle,
+        interface_descriptor: NonNullConst<InterfaceDescriptor>,
+    ) -> Result<ModuleInterface, ModuleError> {
+        self.module_loader_interface
+            .get_interface(module_handle, interface_descriptor)
+    }
+
+    #[inline]
+    unsafe fn get_load_dependencies(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<Span<'static, InterfaceDescriptor<'static>>, ModuleError> {
+        self.module_loader_interface
+            .get_load_dependencies(module_handle)
+    }
+
+    #[inline]
+    unsafe fn get_module_path(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<NonNullConst<OsPathChar>, ModuleError> {
+        self.module_loader_interface.get_module_path(module_handle)
+    }
+}
+
+impl NativeModuleLoaderInterfaceBinding for NativeModuleLoaderInterface {
+    #[inline]
+    unsafe fn get_native_module(
+        &self,
+        module_handle: LoaderModuleHandle,
+    ) -> Result<*mut NativeModule, ModuleError> {
+        (self.get_native_module_fn)(self.module_loader_interface.module_loader, module_handle)
+    }
 }
 
 extern "C" {
