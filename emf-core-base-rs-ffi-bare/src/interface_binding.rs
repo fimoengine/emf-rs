@@ -1,6 +1,6 @@
 //! Definition of the `InterfaceBinding` trait.
 use crate::containers::{MutSpan, NonNullConst, Optional, Result, Span};
-use crate::fn_ptr::{BaseFn, SysGetFunctionFn};
+use crate::fn_ptr::BaseFn;
 use crate::library::{
     DataSymbol, FnSymbol, LibraryError, LibraryHandle, LibraryType,
     LoaderHandle as LibraryLoaderHandle, LoaderInterface, LoaderLibraryHandle, OsPathChar,
@@ -17,20 +17,6 @@ use std::ptr::NonNull;
 
 /// A trait to denote a binding object to the `emf-core-base` interface.
 pub trait InterfaceBinding {
-    /// Initializes the binding object.
-    ///
-    /// # Safety
-    ///
-    /// The parameter `get_function_fn` must be able to accept `base_module`.
-    ///
-    /// # Panics
-    ///
-    /// This function panics if it can not initialize the binding
-    unsafe fn initialize(
-        base_module: *mut BaseT,
-        get_function_fn: SysGetFunctionFn,
-    ) -> &'static Self;
-
     /// Fetches the version of the bound `emf-core-base` interface.
     fn get_version(&self) -> Version;
 

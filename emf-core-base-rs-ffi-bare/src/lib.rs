@@ -4,9 +4,15 @@
 //! [emf-core-base](https://fimoengine.github.io/emf/emf-core-base/index.html) interface.
 //! No implementation for those functions is provided.
 
+pub use boolean::Bool;
+pub use fn_id::FnId;
+pub use interface::{BaseInterface, BASE_INTERFACE_NAME};
+pub use interface_binding::InterfaceBinding;
+
 mod boolean;
 mod fn_id;
 mod interface;
+mod interface_binding;
 
 pub mod containers;
 pub mod fn_ptr;
@@ -14,10 +20,6 @@ pub mod library;
 pub mod module;
 pub mod sys;
 pub mod version;
-
-pub use boolean::Bool;
-pub use fn_id::FnId;
-pub use interface::{BaseInterface, BASE_INTERFACE_NAME};
 
 /// An opaque structure representing the `emf-core-base` interface.
 #[repr(C)]
