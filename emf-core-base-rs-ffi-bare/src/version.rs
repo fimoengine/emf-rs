@@ -79,6 +79,7 @@ pub enum VersionError {
     BufferOverflow = 1,
 }
 
+#[cfg(feature = "global_api")]
 extern "C" {
 
     /// Constructs a new version.

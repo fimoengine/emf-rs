@@ -72,7 +72,7 @@ pub type SyncHandlerUnlockFn = extern "C" fn(sync_handler: *mut SyncHandler);
 /// Once locked, the caller has safe access to the whole interface.
 /// Locking twice will result in a deadlock whereas unlocking twice is undefined behaviour.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct SyncHandlerInterface {
     pub sync_handler: *mut SyncHandler,
     pub lock_fn: SyncHandlerLockFn,
@@ -97,6 +97,7 @@ impl SyncHandlerInterfaceBinding for SyncHandlerInterface {
     }
 }
 
+#[cfg(feature = "global_api")]
 extern "C" {
 
     /// Locks the interface.

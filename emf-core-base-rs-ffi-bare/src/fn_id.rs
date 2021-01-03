@@ -5,7 +5,7 @@
 /// The values `0-1000` are reserved for future use.
 #[repr(i32)]
 #[non_exhaustive]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub enum FnId {
     SysLock = 1,
     SysTryLock = 2,

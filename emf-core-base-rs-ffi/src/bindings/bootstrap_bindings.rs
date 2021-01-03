@@ -80,6 +80,7 @@ const BASE_INTERFACE_DESC: InterfaceDescriptor<'static> = InterfaceDescriptor {
     extensions: generate_const_empty_extensions(),
 };
 
+#[cfg(feature = "global_api")]
 pub static mut BASE_INTERFACE: MaybeUninit<&'static BaseInterface> = MaybeUninit::uninit();
 
 /// Initializes the binding to the `emf-core-base` interface.
@@ -95,6 +96,7 @@ pub static mut BASE_INTERFACE: MaybeUninit<&'static BaseInterface> = MaybeUninit
 /// # Panics
 ///
 /// This function panics if it can not initialize the binding
+#[cfg(feature = "global_api")]
 pub unsafe fn initialize_base_binding(
     base_module: *mut BaseT,
     get_function_fn: SysGetFunctionFn,

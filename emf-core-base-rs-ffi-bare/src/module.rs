@@ -1021,6 +1021,7 @@ impl NativeModuleLoaderInterfaceBinding for NativeModuleLoaderInterface {
     }
 }
 
+#[cfg(feature = "global_api")]
 extern "C" {
 
     /// Registers a new module loader.

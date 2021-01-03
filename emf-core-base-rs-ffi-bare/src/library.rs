@@ -443,6 +443,7 @@ impl NativeLibraryLoaderInterfaceBinding for NativeLoaderInterface {
     }
 }
 
+#[cfg(feature = "global_api")]
 extern "C" {
 
     /// Registers a new loader.

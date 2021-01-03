@@ -8,6 +8,9 @@ license = "MIT OR Apache-2.0"
 categories = ["game-development"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["global_api"]
+global_api = ["emf-core-base-rs-ffi-bare/global_api"]
 
 [dependencies]
 emf-core-base-rs-ffi-bare = { version = "0.1.0", path = "../emf-core-base-rs-ffi-bare" }
