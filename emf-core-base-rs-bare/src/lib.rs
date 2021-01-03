@@ -7,7 +7,15 @@
 //! # Note
 //!
 //! This crate is intended by the implementors of the `emf-core-base` interface.
+#![feature(const_generics)]
+#![allow(incomplete_features)]
 
 pub use emf_core_base_rs_ffi_bare as ffi;
 
+mod base_interface_fn;
+
+pub mod sys;
 pub mod version;
+
+pub use base_interface_fn::BaseInterfaceFn;
+pub use ffi::FnId;

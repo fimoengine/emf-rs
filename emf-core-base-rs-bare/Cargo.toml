@@ -7,5 +7,9 @@ description = "Idiomatic rust wrapper of the emf-core-base interface"
 license = "MIT OR Apache-2.0"
 categories = ["game-development"]
 
+[features]
+default = ["global_api"]
+global_api = ["emf-core-base-rs-ffi-bare/global_api"]
+
 [dependencies]
 emf-core-base-rs-ffi-bare = { version = "0.1.0", path = "../emf-core-base-rs-ffi-bare" }
