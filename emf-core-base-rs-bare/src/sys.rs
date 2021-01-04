@@ -5,12 +5,12 @@ use crate::{ffi, BaseInterfaceFn, FnId};
 use std::ffi::CStr;
 
 #[cfg(feature = "global_api")]
-mod global_sys_token;
-mod local_sys_token;
+mod global_token;
+mod local_token;
 
 #[cfg(feature = "global_api")]
-pub use global_sys_token::GlobalSysToken;
-pub use local_sys_token::LocalSysToken;
+pub use global_token::GlobalToken;
+pub use local_token::LocalToken;
 
 /// A trait describing the functionality of a `SyncHandler`.
 pub trait SyncHandlerWrapper<'a>:
@@ -36,13 +36,6 @@ pub trait SyncHandlerWrapper<'a>:
     ///
     /// Trying to unlock the interface when it is not locked leads to undefined behaviour.
     unsafe fn unlock(&self);
-
-    /// Extends the lifetime of the `SyncHandler`.
-    ///
-    /// # Safety
-    ///
-    /// When using this function you must guarantee that the `SyncHandler` lives long enough.
-    unsafe fn extend_lifetime<'b>(self) -> &'b Self;
 }
 
 /// A `SyncHandler`
@@ -51,22 +44,32 @@ pub struct SyncHandler<'a> {
     handler: &'a ffi::sys::SyncHandlerInterface,
 }
 
+impl<'a> SyncHandler<'a> {
+    /// Extends the lifetime of the `SyncHandler`.
+    ///
+    /// # Safety
+    ///
+    /// When using this function you must guarantee that the `SyncHandler` lives long enough.
+    #[inline]
+    pub unsafe fn extend_lifetime<'b>(self) -> SyncHandler<'b> {
+        std::mem::transmute(self)
+    }
+}
+
 impl<'a> SyncHandlerWrapper<'a> for SyncHandler<'a> {
     #[inline]
     unsafe fn lock(&self) {
         self.handler.lock()
     }
 
+    #[inline]
     unsafe fn try_lock(&self) -> bool {
         self.handler.try_lock().into()
     }
 
+    #[inline]
     unsafe fn unlock(&self) {
         self.handler.unlock()
-    }
-
-    unsafe fn extend_lifetime<'b>(self) -> &'b Self {
-        std::mem::transmute(self)
     }
 }
 
@@ -82,6 +85,7 @@ impl<'a> From<&'a ffi::sys::SyncHandlerInterface> for SyncHandler<'a> {
     }
 }
 
+/// Access point to the `sys` api.
 pub trait SysToken<'a>
 where
     Self: Sized,

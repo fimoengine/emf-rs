@@ -13,9 +13,16 @@
 pub use emf_core_base_rs_ffi_bare as ffi;
 
 mod base_interface_fn;
+mod ffi_object;
 
+pub mod library;
 pub mod sys;
 pub mod version;
 
 pub use base_interface_fn::BaseInterfaceFn;
 pub use ffi::FnId;
+pub use ffi_object::{FFIObject, FromFFI, IntoFFI};
+
+#[cfg(feature = "global_api")]
+pub use sys::GlobalToken;
+pub use sys::LocalToken;

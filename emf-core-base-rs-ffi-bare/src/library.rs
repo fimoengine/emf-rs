@@ -57,7 +57,7 @@
 //!     let library_handle = match library_handle.to_native() {
 //!         Ok(handle) => handle,
 //!         Err(_) => {
-//!             let error = CString::new("Could not construct version from string.").unwrap();
+//!             let error = CString::new("Could not load the library.").unwrap();
 //!             emf_cbase_sys_panic(error.as_ptr());
 //!         }
 //!     };

@@ -4,7 +4,7 @@
 //!
 //! ```no_run
 //! # use emf_core_base_rs_bare::version::{Version, VersionImplGlobal};
-//! # use emf_core_base_rs_bare::sys::{GlobalSysToken, SysToken};
+//! # use emf_core_base_rs_bare::sys::{GlobalToken, SysToken};
 //! # use std::ffi::CString;
 //! # use std::cmp::Ordering;
 //! let v1 = Version::new(1,2,3);
@@ -12,7 +12,7 @@
 //!     Ok(v) => v,
 //!     Err(_) => {
 //!         let error = CString::new("Could not construct version from string.").unwrap();
-//!         GlobalSysToken::new().panic(Some(&error));
+//!         GlobalToken::new().panic(Some(&error));
 //!     }
 //! };
 //!

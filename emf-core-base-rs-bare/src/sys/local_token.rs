@@ -5,12 +5,12 @@ use std::ffi::CStr;
 use std::mem::ManuallyDrop;
 use std::ptr::null;
 
-/// Access token to the local `sys` api.
-pub struct LocalSysToken<'a, T: Sized + ffi::InterfaceBinding> {
+/// Access token to a local interface.
+pub struct LocalToken<'a, T: Sized + ffi::InterfaceBinding> {
     interface: &'a T,
 }
 
-impl<'a, T: Sized + ffi::InterfaceBinding> LocalSysToken<'a, T> {
+impl<'a, T: Sized + ffi::InterfaceBinding> LocalToken<'a, T> {
     /// Creates a new `SysToken` by locking the interface.
     #[inline]
     #[must_use]
@@ -50,9 +50,15 @@ impl<'a, T: Sized + ffi::InterfaceBinding> LocalSysToken<'a, T> {
     pub unsafe fn new_unchecked(interface: &'a T) -> ManuallyDrop<Self> {
         ManuallyDrop::new(Self { interface })
     }
+
+    /// Retrieves a reference to the interface.
+    #[inline]
+    pub fn interface(&self) -> &'a T {
+        self.interface
+    }
 }
 
-impl<'a, T: Sized + ffi::InterfaceBinding> SysToken<'a> for LocalSysToken<'a, T> {
+impl<'a, T: Sized + ffi::InterfaceBinding> SysToken<'a> for LocalToken<'a, T> {
     #[inline]
     fn shutdown(&self) -> ! {
         unsafe { self.interface.sys_shutdown() }
@@ -105,7 +111,7 @@ impl<'a, T: Sized + ffi::InterfaceBinding> SysToken<'a> for LocalSysToken<'a, T>
     }
 }
 
-impl<'a, T: Sized + ffi::InterfaceBinding> Drop for LocalSysToken<'a, T> {
+impl<'a, T: Sized + ffi::InterfaceBinding> Drop for LocalToken<'a, T> {
     fn drop(&mut self) {
         unsafe {
             self.interface.sys_unlock();

@@ -6,12 +6,12 @@ use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::ptr::null;
 
-/// Access token to the global `sys` api.
-pub struct GlobalSysToken<'a> {
+/// Access token to the global interface.
+pub struct GlobalToken<'a> {
     _phantom: PhantomData<&'a ()>,
 }
 
-impl<'a> GlobalSysToken<'a> {
+impl<'a> GlobalToken<'a> {
     /// Creates a new `SysToken` by locking the interface.
     #[inline]
     #[must_use]
@@ -59,7 +59,7 @@ impl<'a> GlobalSysToken<'a> {
     }
 }
 
-impl<'a> SysToken<'a> for GlobalSysToken<'a> {
+impl<'a> SysToken<'a> for GlobalToken<'a> {
     #[inline]
     fn shutdown(&self) -> ! {
         unsafe { ffi::sys::emf_cbase_sys_shutdown() }
@@ -109,13 +109,13 @@ impl<'a> SysToken<'a> for GlobalSysToken<'a> {
     }
 }
 
-impl Default for GlobalSysToken<'_> {
+impl Default for GlobalToken<'_> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Drop for GlobalSysToken<'_> {
+impl Drop for GlobalToken<'_> {
     fn drop(&mut self) {
         unsafe { ffi::sys::emf_cbase_sys_unlock() }
     }
