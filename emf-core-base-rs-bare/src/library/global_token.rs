@@ -1,8 +1,8 @@
 use crate::ffi::containers::{MutSpan, NonNullConst};
-use crate::library::loader_library_handle::LoaderLibraryHandle;
 use crate::library::{
-    os_str_to_native_buff, LibraryError, LibraryHandle, LibraryLoaderHandle, LibraryLoaderWrapper,
-    LibrarySymbol, LibraryToken, LibraryType,
+    os_str_to_native_buff, LibraryError, LibraryHandle, LibraryHandleRef, LibraryLoaderHandle,
+    LibraryLoaderHandleRef, LibraryLoaderWrapper, LibrarySymbol, LibraryToken, LibraryType,
+    LoaderLibraryHandle, LoaderLibraryHandleRef,
 };
 use crate::GlobalToken;
 use crate::{ffi, FFIObject};
@@ -56,11 +56,11 @@ impl<'a> LibraryToken<'a> for GlobalToken<'a> {
     fn get_loader_handle(
         &self,
         lib_type: &LibraryType,
-    ) -> Result<LibraryLoaderHandle<'a>, LibraryError> {
+    ) -> Result<LibraryLoaderHandleRef<'a>, LibraryError> {
         unsafe {
             ffi::library::emf_cbase_library_get_loader_handle(NonNullConst::from(lib_type))
                 .to_native()
-                .map(|h| LibraryLoaderHandle::from_native(h))
+                .map(|h| LibraryLoaderHandleRef::from_native(h))
         }
     }
 
@@ -72,7 +72,7 @@ impl<'a> LibraryToken<'a> for GlobalToken<'a> {
 
     #[inline]
     #[must_use]
-    fn library_exists(&self, library: &LibraryHandle) -> bool {
+    fn library_exists(&self, library: &LibraryHandleRef) -> bool {
         unsafe { ffi::library::emf_cbase_library_library_exists(library.as_native()).into() }
     }
 
@@ -94,7 +94,7 @@ impl<'a> LibraryToken<'a> for GlobalToken<'a> {
     unsafe fn link_library<'b, 'c: 'd, 'd: 'b, T: LibraryLoaderWrapper<'d>>(
         &self,
         library: &LibraryHandle,
-        loader: &'c LibraryLoaderHandle<'c>,
+        loader: &'c LibraryLoaderHandleRef<'c>,
         internal_handle: &'b LoaderLibraryHandle<'b, 'd, T>,
     ) -> Option<LibraryError> {
         ffi::library::emf_cbase_library_unsafe_link_library(
@@ -108,27 +108,27 @@ impl<'a> LibraryToken<'a> for GlobalToken<'a> {
     #[inline]
     unsafe fn get_loader_library_handle<'b, T: LibraryLoaderWrapper<'a>>(
         &self,
-        library: &'b LibraryHandle,
-    ) -> Result<LoaderLibraryHandle<'b, 'a, T>, LibraryError> {
+        library: &'b LibraryHandleRef,
+    ) -> Result<LoaderLibraryHandleRef<'b, 'a, T>, LibraryError> {
         ffi::library::emf_cbase_library_unsafe_get_loader_library_handle(library.as_native())
             .to_native()
-            .map(|h| LoaderLibraryHandle::from_native(h))
+            .map(|h| LoaderLibraryHandleRef::from_native(h))
     }
 
     #[inline]
     unsafe fn get_loader_handle_from_lib(
         &self,
-        library: &LibraryHandle,
-    ) -> Result<LibraryLoaderHandle<'a>, LibraryError> {
+        library: &LibraryHandleRef,
+    ) -> Result<LibraryLoaderHandleRef<'a>, LibraryError> {
         ffi::library::emf_cbase_library_unsafe_get_loader_handle(library.as_native())
             .to_native()
-            .map(|h| LibraryLoaderHandle::from_native(h))
+            .map(|h| LibraryLoaderHandleRef::from_native(h))
     }
 
     #[inline]
     unsafe fn get_loader_interface<T: LibraryLoaderWrapper<'a>>(
         &self,
-        loader: &LibraryLoaderHandle,
+        loader: &LibraryLoaderHandleRef,
     ) -> Result<T, LibraryError> {
         ffi::library::emf_cbase_library_unsafe_get_loader_interface(loader.as_native())
             .to_native()
@@ -138,7 +138,7 @@ impl<'a> LibraryToken<'a> for GlobalToken<'a> {
     #[inline]
     fn load<'c, 'b: 'c, T: AsRef<Path>>(
         &self,
-        loader: &'b LibraryLoaderHandle<'b>,
+        loader: &'b LibraryLoaderHandleRef<'b>,
         path: &T,
     ) -> Result<LibraryHandle<'c>, LibraryError> {
         unsafe {
@@ -162,7 +162,7 @@ impl<'a> LibraryToken<'a> for GlobalToken<'a> {
     #[inline]
     fn get_data_symbol<'b, T: 'b + Sized + FFIObject<ffi::library::DataSymbol>, S: AsRef<CStr>>(
         &self,
-        library: &'b LibraryHandle<'b>,
+        library: &'b LibraryHandleRef<'b>,
         name: &S,
     ) -> Result<LibrarySymbol<'b, T>, LibraryError> {
         unsafe {
@@ -182,7 +182,7 @@ impl<'a> LibraryToken<'a> for GlobalToken<'a> {
         S: AsRef<CStr>,
     >(
         &self,
-        library: &'b LibraryHandle<'b>,
+        library: &'b LibraryHandleRef<'b>,
         name: &S,
     ) -> Result<LibrarySymbol<'b, T>, LibraryError> {
         unsafe {

@@ -68,7 +68,7 @@
 //! let symbol_name = CStr::from_bytes_with_nul(b"example_fn\0".as_ref()).unwrap();
 //! let symbol: LibrarySymbol<'_, FnWrapper> = match LibraryToken::get_function_symbol(
 //!     &token,
-//!     &lib_handle,
+//!     lib_handle.as_ref(),
 //!     &symbol_name
 //! ) {
 //!     Ok(sym) => sym,
@@ -105,14 +105,14 @@ mod loader_handle;
 mod loader_library_handle;
 mod local_token;
 
-pub use library_handle::LibraryHandle;
+pub use library_handle::{LibraryHandle, LibraryHandleRef};
 pub use library_loader::{
     LibraryLoader, LibraryLoaderWrapper, NativeLibraryLoader, NativeLibraryLoaderWrapper,
 };
 pub use library_symbol::LibrarySymbol;
 pub use library_token::LibraryToken;
-pub use loader_handle::{LibraryLoaderHandle, DEFAULT_LIBRARY_LOADER};
-pub use loader_library_handle::LoaderLibraryHandle;
+pub use loader_handle::{LibraryLoaderHandle, LibraryLoaderHandleRef, DEFAULT_LIBRARY_LOADER};
+pub use loader_library_handle::{LoaderLibraryHandle, LoaderLibraryHandleRef};
 
 pub use ffi::library::LibraryError;
 pub use ffi::library::LibraryType;

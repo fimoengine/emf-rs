@@ -2,8 +2,7 @@ use super::os_str_to_native_buff;
 use crate::ffi::containers::NonNullConst;
 use crate::ffi::library::{LibraryLoaderInterfaceBinding, NativeLibraryLoaderInterfaceBinding};
 use crate::ffi::library::{LoaderInterface, NativeLoaderInterface};
-use crate::library::loader_library_handle::LoaderLibraryHandle;
-use crate::library::{LibraryError, LibrarySymbol};
+use crate::library::{LibraryError, LibrarySymbol, LoaderLibraryHandle, LoaderLibraryHandleRef};
 use crate::{ffi, FFIObject, FromFFI};
 #[cfg(windows)]
 use std::ffi::c_void;
@@ -41,7 +40,7 @@ pub trait LibraryLoaderWrapper<'a>:
     /// Direct usage of a `LibraryLoader` circumvents the safety of the `library` api.
     unsafe fn get_data_symbol<'b, U: Sized + FFIObject<ffi::library::DataSymbol>, S: AsRef<CStr>>(
         &self,
-        library: &'b LoaderLibraryHandle<'b, 'a, Self>,
+        library: &'b LoaderLibraryHandleRef<'b, 'a, Self>,
         name: &S,
     ) -> Result<LibrarySymbol<'b, U>, LibraryError>;
 
@@ -56,7 +55,7 @@ pub trait LibraryLoaderWrapper<'a>:
         S: AsRef<CStr>,
     >(
         &self,
-        library: &'b LoaderLibraryHandle<'b, 'a, Self>,
+        library: &'b LoaderLibraryHandleRef<'b, 'a, Self>,
         name: &S,
     ) -> Result<LibrarySymbol<'b, U>, LibraryError>;
 }
@@ -108,7 +107,7 @@ impl<'a> LibraryLoaderWrapper<'a> for LibraryLoader<'a> {
         S: AsRef<CStr>,
     >(
         &self,
-        library: &'b LoaderLibraryHandle<'b, 'a, Self>,
+        library: &'b LoaderLibraryHandleRef<'b, 'a, Self>,
         name: &S,
     ) -> Result<LibrarySymbol<'b, U>, LibraryError> {
         self.interface
@@ -127,7 +126,7 @@ impl<'a> LibraryLoaderWrapper<'a> for LibraryLoader<'a> {
         S: AsRef<CStr>,
     >(
         &self,
-        library: &'b LoaderLibraryHandle<'b, 'a, Self>,
+        library: &'b LoaderLibraryHandleRef<'b, 'a, Self>,
         name: &S,
     ) -> Result<LibrarySymbol<'b, U>, LibraryError> {
         self.interface
@@ -217,7 +216,7 @@ impl<'a> LibraryLoaderWrapper<'a> for NativeLibraryLoader<'a> {
         S: AsRef<CStr>,
     >(
         &self,
-        library: &'b LoaderLibraryHandle<'b, 'a, Self>,
+        library: &'b LoaderLibraryHandleRef<'b, 'a, Self>,
         name: &S,
     ) -> Result<LibrarySymbol<'b, U>, LibraryError> {
         LibraryLoader::<'a>::from_native(&self.interface.library_loader_interface).get_data_symbol(
@@ -233,7 +232,7 @@ impl<'a> LibraryLoaderWrapper<'a> for NativeLibraryLoader<'a> {
         S: AsRef<CStr>,
     >(
         &self,
-        library: &'b LoaderLibraryHandle<'b, 'a, Self>,
+        library: &'b LoaderLibraryHandleRef<'b, 'a, Self>,
         name: &S,
     ) -> Result<LibrarySymbol<'b, U>, LibraryError> {
         LibraryLoader::<'a>::from_native(&self.interface.library_loader_interface)

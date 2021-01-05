@@ -1,5 +1,6 @@
 use crate::library::LibraryHandle;
 use crate::{ffi, FFIObject};
+use std::fmt::{Debug, Formatter};
 use std::marker::PhantomData;
 
 ///  A symbol contained in a library.
@@ -41,6 +42,33 @@ impl<'a, T: Sized> AsMut<T> for LibrarySymbol<'a, T> {
         &mut self.symbol
     }
 }
+
+impl<'a, T: Sized + Copy + Clone> Copy for LibrarySymbol<'a, T> {}
+
+impl<'a, T: Sized + Clone> Clone for LibrarySymbol<'a, T> {
+    fn clone(&self) -> Self {
+        Self {
+            symbol: self.symbol.clone(),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, T: Sized + Debug> Debug for LibrarySymbol<'a, T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LibrarySymbol")
+            .field("symbol", &self.symbol)
+            .finish()
+    }
+}
+
+impl<'a, T: Sized + PartialEq> PartialEq for LibrarySymbol<'a, T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.symbol.eq(&other.symbol)
+    }
+}
+
+impl<'a, T: Sized + PartialEq + Eq> Eq for LibrarySymbol<'a, T> {}
 
 impl<'a, T: Sized + FFIObject<ffi::library::DataSymbol>> FFIObject<ffi::library::DataSymbol>
     for LibrarySymbol<'a, T>

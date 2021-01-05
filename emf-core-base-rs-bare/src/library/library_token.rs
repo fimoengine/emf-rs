@@ -1,7 +1,6 @@
-use crate::library::loader_library_handle::LoaderLibraryHandle;
 use crate::library::{
-    LibraryError, LibraryHandle, LibraryLoaderHandle, LibraryLoaderWrapper, LibrarySymbol,
-    LibraryType,
+    LibraryError, LibraryHandle, LibraryHandleRef, LibraryLoaderHandle, LibraryLoaderHandleRef,
+    LibraryLoaderWrapper, LibrarySymbol, LibraryType, LoaderLibraryHandle, LoaderLibraryHandleRef,
 };
 use crate::{ffi, FFIObject};
 use std::ffi::CStr;
@@ -11,9 +10,27 @@ use std::path::Path;
 pub trait LibraryToken<'a> {
     /// Registers a new `LibraryLoader` with the `library` api.
     ///
+    /// The loader must implement the trait `LibraryLoaderWrapper<'static>`, meaning that it
+    /// must be accessible for the entire lifetime of the owning module.
+    ///
     /// # Failure
     ///
     /// The function fails if the library type already exists.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use emf_core_base_rs_bare::library::{LibraryToken, LibraryLoader};
+    /// # use emf_core_base_rs_bare::GlobalToken;
+    /// # let token = GlobalToken::new();
+    /// # let loader: LibraryLoader<'static> = unsafe { std::mem::zeroed() };
+    /// # let lib_type = Default::default();
+    /// #
+    /// let handle = match LibraryToken::register_loader(&token, &loader, &lib_type) {
+    ///     Ok(h) => h,
+    ///     Err(_) => panic!("Could not register loader!")
+    /// };
+    /// ```
     fn register_loader<T: LibraryLoaderWrapper<'static>>(
         &self,
         loader: &T,
@@ -25,6 +42,20 @@ pub trait LibraryToken<'a> {
     /// # Failure
     ///
     /// The function fails if `loader` is invalid.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use emf_core_base_rs_bare::FFIObject;
+    /// # use emf_core_base_rs_bare::library::{LibraryToken, DEFAULT_LIBRARY_LOADER, LibraryLoaderHandle};
+    /// # use emf_core_base_rs_bare::GlobalToken;
+    /// # let token = GlobalToken::new();
+    /// # let loader = unsafe { LibraryLoaderHandle::from_native(DEFAULT_LIBRARY_LOADER) };
+    /// match LibraryToken::unregister_loader(&token, loader) {
+    ///     None => {}
+    ///     Some(_) => panic!("Unable to remove the library loader!")
+    /// };
+    /// ```
     fn unregister_loader(&self, loader: LibraryLoaderHandle) -> Option<LibraryError>;
 
     /// Fetches the number of registered loaders.
@@ -50,13 +81,13 @@ pub trait LibraryToken<'a> {
     fn get_loader_handle(
         &self,
         lib_type: &LibraryType,
-    ) -> Result<LibraryLoaderHandle<'a>, LibraryError>;
+    ) -> Result<LibraryLoaderHandleRef<'a>, LibraryError>;
 
     /// Checks if a library type exists.
     fn library_type_exists(&self, lib_type: &LibraryType) -> bool;
 
     /// Checks if a the library handle is valid.
-    fn library_exists(&self, library: &LibraryHandle) -> bool;
+    fn library_exists(&self, library: &LibraryHandleRef) -> bool;
 
     /// Creates a new unlinked library handle.
     ///
@@ -91,7 +122,7 @@ pub trait LibraryToken<'a> {
     unsafe fn link_library<'b, 'c: 'd, 'd: 'b, T: LibraryLoaderWrapper<'d>>(
         &self,
         library: &LibraryHandle,
-        loader: &'c LibraryLoaderHandle<'c>,
+        loader: &'c LibraryLoaderHandleRef<'c>,
         internal_handle: &'b LoaderLibraryHandle<'b, 'd, T>,
     ) -> Option<LibraryError>;
 
@@ -106,8 +137,8 @@ pub trait LibraryToken<'a> {
     /// Care must be taken when dealing with internal handles.
     unsafe fn get_loader_library_handle<'b, T: LibraryLoaderWrapper<'a>>(
         &self,
-        library: &'b LibraryHandle,
-    ) -> Result<LoaderLibraryHandle<'b, 'a, T>, LibraryError>;
+        library: &'b LibraryHandleRef,
+    ) -> Result<LoaderLibraryHandleRef<'b, 'a, T>, LibraryError>;
 
     /// Fetches the loader handle linked with the library handle.
     ///
@@ -120,8 +151,8 @@ pub trait LibraryToken<'a> {
     /// Care must be taken when dealing with internal handles.
     unsafe fn get_loader_handle_from_lib(
         &self,
-        library: &LibraryHandle,
-    ) -> Result<LibraryLoaderHandle<'a>, LibraryError>;
+        library: &LibraryHandleRef,
+    ) -> Result<LibraryLoaderHandleRef<'a>, LibraryError>;
 
     /// Fetches the interface of a library loader.
     ///
@@ -135,7 +166,7 @@ pub trait LibraryToken<'a> {
     /// the safety of the `library` api.
     unsafe fn get_loader_interface<T: LibraryLoaderWrapper<'a>>(
         &self,
-        loader: &LibraryLoaderHandle,
+        loader: &LibraryLoaderHandleRef,
     ) -> Result<T, LibraryError>;
 
     /// Loads a library from a path.
@@ -148,7 +179,7 @@ pub trait LibraryToken<'a> {
     /// of the library can not be loaded by the loader.
     fn load<'c, 'b: 'c, T: AsRef<Path>>(
         &self,
-        loader: &'b LibraryLoaderHandle<'b>,
+        loader: &'b LibraryLoaderHandleRef<'b>,
         path: &T,
     ) -> Result<LibraryHandle<'c>, LibraryError>;
 
@@ -169,7 +200,7 @@ pub trait LibraryToken<'a> {
     /// The function fails if `library` is invalid or library does not contain `name`.
     fn get_data_symbol<'b, T: 'b + Sized + FFIObject<ffi::library::DataSymbol>, S: AsRef<CStr>>(
         &self,
-        library: &'b LibraryHandle<'b>,
+        library: &'b LibraryHandleRef<'b>,
         name: &S,
     ) -> Result<LibrarySymbol<'b, T>, LibraryError>;
 
@@ -183,7 +214,7 @@ pub trait LibraryToken<'a> {
     /// The function fails if `library` is invalid or library does not contain `name`.
     fn get_function_symbol<'b, T: 'b + Sized + FFIObject<ffi::library::FnSymbol>, S: AsRef<CStr>>(
         &self,
-        library: &'b LibraryHandle<'b>,
+        library: &'b LibraryHandleRef<'b>,
         name: &S,
     ) -> Result<LibrarySymbol<'b, T>, LibraryError>;
 }
