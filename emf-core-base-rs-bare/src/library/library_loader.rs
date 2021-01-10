@@ -3,9 +3,7 @@ use crate::ffi::containers::NonNullConst;
 use crate::ffi::library::{LibraryLoaderInterfaceBinding, NativeLibraryLoaderInterfaceBinding};
 use crate::library::{LibraryError, LibrarySymbol, LoaderLibraryHandle, LoaderLibraryHandleRef};
 use crate::{ffi, FFIObject};
-#[cfg(windows)]
-use std::ffi::c_void;
-use std::ffi::CStr;
+use std::ffi::{c_void, CStr};
 #[cfg(unix)]
 use std::os::raw::c_int;
 use std::path::Path;
