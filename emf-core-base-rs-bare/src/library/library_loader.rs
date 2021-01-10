@@ -1,9 +1,8 @@
 use super::os_str_to_native_buff;
 use crate::ffi::containers::NonNullConst;
 use crate::ffi::library::{LibraryLoaderInterfaceBinding, NativeLibraryLoaderInterfaceBinding};
-use crate::ffi::library::{LoaderInterface, NativeLoaderInterface};
 use crate::library::{LibraryError, LibrarySymbol, LoaderLibraryHandle, LoaderLibraryHandleRef};
-use crate::{ffi, FFIObject, FromFFI};
+use crate::{ffi, FFIObject};
 #[cfg(windows)]
 use std::ffi::c_void;
 use std::ffi::CStr;
@@ -13,7 +12,7 @@ use std::path::Path;
 
 /// A trait describing the functionality of a `LibraryLoader`.
 pub trait LibraryLoaderWrapper<'a>:
-    AsRef<&'a ffi::library::LoaderInterface> + FromFFI<&'a ffi::library::LoaderInterface> + Sized
+    AsRef<ffi::library::LoaderInterface> + FFIObject<&'a ffi::library::LoaderInterface> + Sized
 {
     /// Loads a library from a path.
     ///
@@ -58,6 +57,13 @@ pub trait LibraryLoaderWrapper<'a>:
         library: &'b LoaderLibraryHandleRef<'b, 'a, Self>,
         name: &S,
     ) -> Result<LibrarySymbol<'b, U>, LibraryError>;
+
+    /// Fetches the internal interface of the loader.
+    ///
+    /// # Safety
+    ///
+    /// Direct usage of a `LibraryLoader` circumvents the safety of the `library` api.
+    unsafe fn get_internal_interface<U: 'a + Sized + FFIObject<NonNullConst<c_void>>>(&self) -> U;
 }
 
 /// A `LibraryLoader`.
@@ -137,24 +143,34 @@ impl<'a> LibraryLoaderWrapper<'a> for LibraryLoader<'a> {
             .to_native()
             .map(|sym| LibrarySymbol::from_native(sym))
     }
-}
 
-impl<'a> AsRef<&'a ffi::library::LoaderInterface> for LibraryLoader<'a> {
-    fn as_ref(&self) -> &&'a LoaderInterface {
-        &self.interface
+    #[inline]
+    #[must_use]
+    unsafe fn get_internal_interface<U: 'a + Sized + FFIObject<NonNullConst<c_void>>>(&self) -> U {
+        U::from_native(self.interface.get_internal_interface())
     }
 }
 
-impl<'a> FromFFI<&'a ffi::library::LoaderInterface> for LibraryLoader<'a> {
-    unsafe fn from_ffi(v: &'a ffi::library::LoaderInterface) -> Self {
-        Self { interface: v }
+impl<'a> AsRef<ffi::library::LoaderInterface> for LibraryLoader<'a> {
+    fn as_ref(&self) -> &'a ffi::library::LoaderInterface {
+        self.interface
+    }
+}
+
+impl<'a> FFIObject<&'a ffi::library::LoaderInterface> for LibraryLoader<'a> {
+    fn as_native(&self) -> &'a ffi::library::LoaderInterface {
+        self.interface
+    }
+
+    unsafe fn from_native(val: &'a ffi::library::LoaderInterface) -> Self {
+        Self { interface: val }
     }
 }
 
 /// Functionalities of the `NativeLibraryLoader`
 pub trait NativeLibraryLoaderWrapper<'a>:
-    AsRef<&'a ffi::library::NativeLoaderInterface>
-    + FromFFI<&'a ffi::library::NativeLoaderInterface>
+    AsRef<ffi::library::NativeLoaderInterface>
+    + FFIObject<&'a ffi::library::NativeLoaderInterface>
     + LibraryLoaderWrapper<'a>
 {
     /// Loads a library using the `NativeLibraryLoader`.
@@ -195,7 +211,7 @@ impl<'a> LibraryLoaderWrapper<'a> for NativeLibraryLoader<'a> {
         &self,
         path: &T,
     ) -> Result<LoaderLibraryHandle<'b, 'a, Self>, LibraryError> {
-        LibraryLoader::<'a>::from_native(&self.interface.library_loader_interface)
+        LibraryLoader::<'a>::from_native(self.interface.library_loader_interface.as_ref())
             .load(path)
             .map(|lib| lib.cast())
     }
@@ -205,7 +221,7 @@ impl<'a> LibraryLoaderWrapper<'a> for NativeLibraryLoader<'a> {
         &self,
         library: LoaderLibraryHandle<'b, 'a, Self>,
     ) -> Option<LibraryError> {
-        LibraryLoader::<'a>::from_native(&self.interface.library_loader_interface)
+        LibraryLoader::<'a>::from_native(self.interface.library_loader_interface.as_ref())
             .unload(library.cast())
     }
 
@@ -219,10 +235,11 @@ impl<'a> LibraryLoaderWrapper<'a> for NativeLibraryLoader<'a> {
         library: &'b LoaderLibraryHandleRef<'b, 'a, Self>,
         name: &S,
     ) -> Result<LibrarySymbol<'b, U>, LibraryError> {
-        LibraryLoader::<'a>::from_native(&self.interface.library_loader_interface).get_data_symbol(
-            std::mem::transmute::<_, &'b _>(&library.cast_ref::<LibraryLoader>()),
-            name,
-        )
+        LibraryLoader::<'a>::from_native(self.interface.library_loader_interface.as_ref())
+            .get_data_symbol(
+                std::mem::transmute::<_, &'b _>(&library.cast_ref::<LibraryLoader>()),
+                name,
+            )
     }
 
     #[inline]
@@ -235,11 +252,18 @@ impl<'a> LibraryLoaderWrapper<'a> for NativeLibraryLoader<'a> {
         library: &'b LoaderLibraryHandleRef<'b, 'a, Self>,
         name: &S,
     ) -> Result<LibrarySymbol<'b, U>, LibraryError> {
-        LibraryLoader::<'a>::from_native(&self.interface.library_loader_interface)
+        LibraryLoader::<'a>::from_native(self.interface.library_loader_interface.as_ref())
             .get_function_symbol(
                 std::mem::transmute::<_, &'b _>(&library.cast_ref::<LibraryLoader>()),
                 name,
             )
+    }
+
+    #[inline]
+    #[must_use]
+    unsafe fn get_internal_interface<U: 'a + Sized + FFIObject<NonNullConst<c_void>>>(&self) -> U {
+        LibraryLoader::<'a>::from_native(self.interface.library_loader_interface.as_ref())
+            .get_internal_interface()
     }
 }
 
@@ -291,36 +315,53 @@ impl<'a> From<LibraryLoader<'a>> for NativeLibraryLoader<'a> {
 
 impl<'a> From<NativeLibraryLoader<'a>> for LibraryLoader<'a> {
     fn from(loader: NativeLibraryLoader<'a>) -> Self {
-        unsafe { LibraryLoader::from_native(loader.as_native()) }
-    }
-}
-
-impl<'a> AsRef<&'a ffi::library::LoaderInterface> for NativeLibraryLoader<'a> {
-    fn as_ref(&self) -> &&'a LoaderInterface {
         unsafe {
-            &*(&self.interface as *const &ffi::library::NativeLoaderInterface
-                as *const &ffi::library::LoaderInterface)
+            let interface: &ffi::library::LoaderInterface = loader.as_native();
+            LibraryLoader::from_native(interface)
         }
     }
 }
 
-impl<'a> FromFFI<&'a ffi::library::LoaderInterface> for NativeLibraryLoader<'a> {
-    unsafe fn from_ffi(v: &'a ffi::library::LoaderInterface) -> Self {
+impl<'a> AsRef<ffi::library::LoaderInterface> for NativeLibraryLoader<'a> {
+    fn as_ref(&self) -> &'a ffi::library::LoaderInterface {
+        unsafe { &*self.interface.library_loader_interface.as_ptr() }
+    }
+}
+
+impl<'a> AsRef<ffi::library::NativeLoaderInterface> for NativeLibraryLoader<'a> {
+    fn as_ref(&self) -> &'a ffi::library::NativeLoaderInterface {
+        self.interface
+    }
+}
+
+impl<'a> FFIObject<&'a ffi::library::LoaderInterface> for NativeLibraryLoader<'a> {
+    fn as_native(&self) -> &'a ffi::library::LoaderInterface {
+        unsafe { &*self.interface.library_loader_interface.as_ptr() }
+    }
+
+    unsafe fn from_native(val: &'a ffi::library::LoaderInterface) -> Self {
+        NativeLibraryLoader::from_native(val.get_internal_interface())
+    }
+}
+
+impl<'a> FFIObject<&'a ffi::library::NativeLoaderInterface> for NativeLibraryLoader<'a> {
+    fn as_native(&self) -> &'a ffi::library::NativeLoaderInterface {
+        self.interface
+    }
+
+    unsafe fn from_native(val: &'a ffi::library::NativeLoaderInterface) -> Self {
+        Self { interface: val }
+    }
+}
+
+impl<'a> FFIObject<NonNullConst<c_void>> for NativeLibraryLoader<'a> {
+    fn as_native(&self) -> NonNullConst<c_void> {
+        NonNullConst::from(self.interface).cast()
+    }
+
+    unsafe fn from_native(val: NonNullConst<c_void>) -> Self {
         Self {
-            interface: &*(v as *const ffi::library::LoaderInterface
-                as *const ffi::library::NativeLoaderInterface),
+            interface: &*(val.as_ptr() as *const ffi::library::NativeLoaderInterface),
         }
-    }
-}
-
-impl<'a> AsRef<&'a ffi::library::NativeLoaderInterface> for NativeLibraryLoader<'a> {
-    fn as_ref(&self) -> &&'a NativeLoaderInterface {
-        &self.interface
-    }
-}
-
-impl<'a> FromFFI<&'a ffi::library::NativeLoaderInterface> for NativeLibraryLoader<'a> {
-    unsafe fn from_ffi(v: &'a NativeLoaderInterface) -> Self {
-        Self { interface: v }
     }
 }
