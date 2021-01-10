@@ -91,7 +91,9 @@
 //! ```
 
 use crate::ffi;
-use std::ffi::OsStr;
+use ffi::containers::NonNullConst;
+use ffi::library::OsPathChar;
+use std::ffi::{OsStr, OsString};
 #[cfg(unix)]
 use std::os::raw::c_char;
 
@@ -118,12 +120,32 @@ pub use ffi::library::LibraryError;
 pub use ffi::library::LibraryType;
 pub use ffi::library::NATIVE_LIBRARY_TYPE_NAME as DEFAULT_LIBRARY_TYPE_NAME;
 
+pub fn native_buff_ptr_to_os_str(path: NonNullConst<OsPathChar>) -> OsString {
+    unsafe {
+        let mut current_ptr = path.as_ptr();
+        while *current_ptr != 0 {
+            current_ptr = current_ptr.offset(1);
+        }
+        let path_slice = std::slice::from_raw_parts(
+            path.as_ptr(),
+            current_ptr.offset_from(path.as_ptr()) as usize,
+        );
+        native_buff_to_os_str(&path_slice)
+    }
+}
+
 #[cfg(windows)]
 pub fn os_str_to_native_buff(path: &OsStr) -> Vec<u16> {
     use std::os::windows::prelude::*;
     let mut vec: Vec<u16> = path.encode_wide().collect();
     vec.push(0u16);
     vec
+}
+
+#[cfg(windows)]
+pub fn native_buff_to_os_str(path: &[u16]) -> OsString {
+    use std::os::windows::prelude::*;
+    OsString::from_wide(path)
 }
 
 #[cfg(unix)]
@@ -135,4 +157,12 @@ pub fn os_str_to_native_buff(path: &OsStr) -> Vec<c_char> {
     });
     vec.push(0);
     vec
+}
+
+#[cfg(unix)]
+pub fn native_buff_to_os_str(path: &[c_char]) -> OsString {
+    use std::os::unix::prelude::*;
+    let path = unsafe { std::slice::from_raw_parts(path.as_ptr() as *const u8, path.len()) };
+    let os_str = OsStr::from_bytes(&path);
+    os_str.to_os_string()
 }
