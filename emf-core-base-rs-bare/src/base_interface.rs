@@ -708,6 +708,16 @@ impl<'a> AsRef<ffi::BaseInterface> for BaseInterface<'a> {
     }
 }
 
+impl<'a> FFIObject<&'a ffi::BaseInterface> for BaseInterface<'a> {
+    fn as_native(&self) -> &'a ffi::BaseInterface {
+        self.interface
+    }
+
+    unsafe fn from_native(val: &'a ffi::BaseInterface) -> Self {
+        Self { interface: val }
+    }
+}
+
 impl<'a> FFIObject<ModuleInterface> for BaseInterface<'a> {
     fn as_native(&self) -> ModuleInterface {
         ModuleInterface {

@@ -6,7 +6,7 @@
 //!
 //! # Note
 //!
-//! This crate is intended by the implementors of the `emf-core-base` interface.
+//! This crate is intended to be used by the implementors of the `emf-core-base` interface.
 
 pub use boolean::Bool;
 pub use fn_id::FnId;
