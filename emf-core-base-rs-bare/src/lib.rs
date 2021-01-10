@@ -12,13 +12,16 @@
 
 pub use emf_core_base_rs_ffi_bare as ffi;
 
+mod base_interface;
 mod base_interface_fn;
 mod ffi_object;
 
 pub mod library;
+pub mod module;
 pub mod sys;
 pub mod version;
 
+pub use base_interface::BaseInterface;
 pub use base_interface_fn::BaseInterfaceFn;
 pub use ffi::FnId;
 pub use ffi_object::{FFIObject, FromFFI, IntoFFI};
