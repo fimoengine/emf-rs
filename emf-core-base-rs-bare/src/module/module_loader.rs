@@ -5,14 +5,15 @@ use crate::module::{
     InterfaceDescriptor, LoaderModuleHandle, LoaderModuleHandleRef, ModuleError, ModuleInfo,
     ModuleInterface, ModuleStatus,
 };
-use crate::{ffi, FFIObject, FromFFI};
+use crate::{ffi, FFIObject};
 use ffi::containers::NonNullConst;
+use std::os::raw::c_void;
 use std::path::{Path, PathBuf};
 
 /// A trait providing the interface of a `ModuleLoader`.
 pub trait ModuleLoaderWrapper<'a>:
-    AsRef<&'a ffi::module::ModuleLoaderInterface>
-    + FromFFI<&'a ffi::module::ModuleLoaderInterface>
+    AsRef<ffi::module::ModuleLoaderInterface>
+    + FFIObject<&'a ffi::module::ModuleLoaderInterface>
     + Sized
 {
     /// Adds a new module using the `ModuleLoader`.
@@ -139,6 +140,13 @@ pub trait ModuleLoaderWrapper<'a>:
         module: &LoaderModuleHandleRef<'b, 'a, Self>,
         interface: &InterfaceDescriptor,
     ) -> Result<ModuleInterface<'b, T>, ModuleError>;
+
+    /// Fetches the internal interface of the loader.
+    ///
+    /// # Safety
+    ///
+    /// Direct usage of a `ModuleLoader` circumvents the safety of the `module` api.
+    unsafe fn get_internal_interface<T: 'a + Sized + FFIObject<NonNullConst<c_void>>>(&self) -> T;
 }
 
 /// A `ModuleLoader`
@@ -288,24 +296,34 @@ impl<'a> ModuleLoaderWrapper<'a> for ModuleLoader<'a> {
             .to_native()
             .map(|i| ModuleInterface::from_native(i))
     }
-}
 
-impl<'a> AsRef<&'a ffi::module::ModuleLoaderInterface> for ModuleLoader<'a> {
-    fn as_ref(&self) -> &&'a ffi::module::ModuleLoaderInterface {
-        &self.interface
+    #[inline]
+    #[must_use]
+    unsafe fn get_internal_interface<T: 'a + Sized + FFIObject<NonNullConst<c_void>>>(&self) -> T {
+        T::from_native(self.interface.get_internal_interface())
     }
 }
 
-impl<'a> FromFFI<&'a ffi::module::ModuleLoaderInterface> for ModuleLoader<'a> {
-    unsafe fn from_ffi(v: &'a ffi::module::ModuleLoaderInterface) -> Self {
-        Self { interface: v }
+impl<'a> AsRef<ffi::module::ModuleLoaderInterface> for ModuleLoader<'a> {
+    fn as_ref(&self) -> &'a ffi::module::ModuleLoaderInterface {
+        self.interface
+    }
+}
+
+impl<'a> FFIObject<&'a ffi::module::ModuleLoaderInterface> for ModuleLoader<'a> {
+    fn as_native(&self) -> &'a ffi::module::ModuleLoaderInterface {
+        self.interface
+    }
+
+    unsafe fn from_native(val: &'a ffi::module::ModuleLoaderInterface) -> Self {
+        Self { interface: val }
     }
 }
 
 /// Functionalities of the `NativeLibraryLoader`
 pub trait NativeModuleLoaderWrapper<'a>:
-    AsRef<&'a ffi::module::NativeModuleLoaderInterface>
-    + FromFFI<&'a ffi::module::NativeModuleLoaderInterface>
+    AsRef<ffi::module::NativeModuleLoaderInterface>
+    + FFIObject<&'a ffi::module::NativeModuleLoaderInterface>
     + ModuleLoaderWrapper<'a>
 {
     /// Fetches a reference which can be used with the functions of a `NativeModule`.
@@ -331,7 +349,7 @@ impl<'a> ModuleLoaderWrapper<'a> for NativeModuleLoader<'a> {
         &self,
         path: &T,
     ) -> Result<LoaderModuleHandle<'b, 'a, Self>, ModuleError> {
-        ModuleLoader::<'a>::from_native(&self.interface.module_loader_interface)
+        ModuleLoader::<'a>::from_native(self.interface.module_loader_interface.as_ref())
             .add_module(path)
             .map(|h| h.cast())
     }
@@ -342,21 +360,21 @@ impl<'a> ModuleLoaderWrapper<'a> for NativeModuleLoader<'a> {
         &self,
         module: LoaderModuleHandle<'b, 'a, Self>,
     ) -> Option<ModuleError> {
-        ModuleLoader::<'a>::from_native(&self.interface.module_loader_interface)
+        ModuleLoader::<'a>::from_native(self.interface.module_loader_interface.as_ref())
             .remove_module(module.cast())
     }
 
     #[inline]
     #[must_use]
     unsafe fn load<'b>(&self, module: &LoaderModuleHandle<'b, 'a, Self>) -> Option<ModuleError> {
-        ModuleLoader::<'a>::from_native(&self.interface.module_loader_interface)
+        ModuleLoader::<'a>::from_native(self.interface.module_loader_interface.as_ref())
             .load(&module.cast_ref())
     }
 
     #[inline]
     #[must_use]
     unsafe fn unload<'b>(&self, module: &LoaderModuleHandle<'b, 'a, Self>) -> Option<ModuleError> {
-        ModuleLoader::<'a>::from_native(&self.interface.module_loader_interface)
+        ModuleLoader::<'a>::from_native(self.interface.module_loader_interface.as_ref())
             .unload(&module.cast_ref())
     }
 
@@ -366,7 +384,7 @@ impl<'a> ModuleLoaderWrapper<'a> for NativeModuleLoader<'a> {
         &self,
         module: &LoaderModuleHandle<'b, 'a, Self>,
     ) -> Option<ModuleError> {
-        ModuleLoader::<'a>::from_native(&self.interface.module_loader_interface)
+        ModuleLoader::<'a>::from_native(self.interface.module_loader_interface.as_ref())
             .initialize(&module.cast_ref())
     }
 
@@ -376,7 +394,7 @@ impl<'a> ModuleLoaderWrapper<'a> for NativeModuleLoader<'a> {
         &self,
         module: &LoaderModuleHandle<'b, 'a, Self>,
     ) -> Option<ModuleError> {
-        ModuleLoader::<'a>::from_native(&self.interface.module_loader_interface)
+        ModuleLoader::<'a>::from_native(self.interface.module_loader_interface.as_ref())
             .terminate(&module.cast_ref())
     }
 
@@ -385,7 +403,7 @@ impl<'a> ModuleLoaderWrapper<'a> for NativeModuleLoader<'a> {
         &self,
         module: &LoaderModuleHandleRef<'b, 'a, Self>,
     ) -> Result<ModuleStatus, ModuleError> {
-        ModuleLoader::<'a>::from_native(&self.interface.module_loader_interface)
+        ModuleLoader::<'a>::from_native(self.interface.module_loader_interface.as_ref())
             .fetch_status(&module.cast_ref())
     }
 
@@ -394,7 +412,7 @@ impl<'a> ModuleLoaderWrapper<'a> for NativeModuleLoader<'a> {
         &self,
         module: &LoaderModuleHandleRef<'b, 'a, Self>,
     ) -> Result<&'b ModuleInfo, ModuleError> {
-        ModuleLoader::<'a>::from_native(&self.interface.module_loader_interface)
+        ModuleLoader::<'a>::from_native(self.interface.module_loader_interface.as_ref())
             .get_module_info(&module.cast_ref())
     }
 
@@ -403,7 +421,7 @@ impl<'a> ModuleLoaderWrapper<'a> for NativeModuleLoader<'a> {
         &self,
         module: &LoaderModuleHandleRef<'b, 'a, Self>,
     ) -> Result<PathBuf, ModuleError> {
-        ModuleLoader::<'a>::from_native(&self.interface.module_loader_interface)
+        ModuleLoader::<'a>::from_native(self.interface.module_loader_interface.as_ref())
             .get_module_path(&module.cast_ref())
     }
 
@@ -412,7 +430,7 @@ impl<'a> ModuleLoaderWrapper<'a> for NativeModuleLoader<'a> {
         &self,
         module: &LoaderModuleHandleRef<'b, 'a, Self>,
     ) -> Result<&'b [InterfaceDescriptor<'b>], ModuleError> {
-        ModuleLoader::<'a>::from_native(&self.interface.module_loader_interface)
+        ModuleLoader::<'a>::from_native(self.interface.module_loader_interface.as_ref())
             .get_load_dependencies(&module.cast_ref())
     }
 
@@ -421,7 +439,7 @@ impl<'a> ModuleLoaderWrapper<'a> for NativeModuleLoader<'a> {
         &self,
         module: &LoaderModuleHandleRef<'b, 'a, Self>,
     ) -> Result<&'b [InterfaceDescriptor<'b>], ModuleError> {
-        ModuleLoader::<'a>::from_native(&self.interface.module_loader_interface)
+        ModuleLoader::<'a>::from_native(self.interface.module_loader_interface.as_ref())
             .get_runtime_dependencies(&module.cast_ref())
     }
 
@@ -430,7 +448,7 @@ impl<'a> ModuleLoaderWrapper<'a> for NativeModuleLoader<'a> {
         &self,
         module: &LoaderModuleHandleRef<'b, 'a, Self>,
     ) -> Result<&'b [InterfaceDescriptor<'b>], ModuleError> {
-        ModuleLoader::<'a>::from_native(&self.interface.module_loader_interface)
+        ModuleLoader::<'a>::from_native(self.interface.module_loader_interface.as_ref())
             .get_exportable_interfaces(&module.cast_ref())
     }
 
@@ -440,8 +458,15 @@ impl<'a> ModuleLoaderWrapper<'a> for NativeModuleLoader<'a> {
         module: &LoaderModuleHandleRef<'b, 'a, Self>,
         interface: &InterfaceDescriptor,
     ) -> Result<ModuleInterface<'b, T>, ModuleError> {
-        ModuleLoader::<'a>::from_native(&self.interface.module_loader_interface)
+        ModuleLoader::<'a>::from_native(self.interface.module_loader_interface.as_ref())
             .get_interface(&module.cast_ref(), interface)
+    }
+
+    #[inline]
+    #[must_use]
+    unsafe fn get_internal_interface<T: 'a + Sized + FFIObject<NonNullConst<c_void>>>(&self) -> T {
+        ModuleLoader::<'a>::from_native(self.interface.module_loader_interface.as_ref())
+            .get_internal_interface()
     }
 }
 
@@ -466,36 +491,53 @@ impl<'a> From<ModuleLoader<'a>> for NativeModuleLoader<'a> {
 
 impl<'a> From<NativeModuleLoader<'a>> for ModuleLoader<'a> {
     fn from(loader: NativeModuleLoader<'a>) -> Self {
-        unsafe { ModuleLoader::from_native(loader.as_native()) }
-    }
-}
-
-impl<'a> AsRef<&'a ffi::module::ModuleLoaderInterface> for NativeModuleLoader<'a> {
-    fn as_ref(&self) -> &&'a ffi::module::ModuleLoaderInterface {
         unsafe {
-            &*(&self.interface as *const &ffi::module::NativeModuleLoaderInterface
-                as *const &ffi::module::ModuleLoaderInterface)
+            let interface: &ffi::module::ModuleLoaderInterface = loader.as_native();
+            ModuleLoader::from_native(interface)
         }
     }
 }
 
-impl<'a> FromFFI<&'a ffi::module::ModuleLoaderInterface> for NativeModuleLoader<'a> {
-    unsafe fn from_ffi(v: &'a ffi::module::ModuleLoaderInterface) -> Self {
+impl<'a> AsRef<ffi::module::ModuleLoaderInterface> for NativeModuleLoader<'a> {
+    fn as_ref(&self) -> &ffi::module::ModuleLoaderInterface {
+        unsafe { &*self.interface.module_loader_interface.as_ptr() }
+    }
+}
+
+impl<'a> AsRef<ffi::module::NativeModuleLoaderInterface> for NativeModuleLoader<'a> {
+    fn as_ref(&self) -> &ffi::module::NativeModuleLoaderInterface {
+        self.interface
+    }
+}
+
+impl<'a> FFIObject<&'a ffi::module::ModuleLoaderInterface> for NativeModuleLoader<'a> {
+    fn as_native(&self) -> &'a ffi::module::ModuleLoaderInterface {
+        unsafe { &*self.interface.module_loader_interface.as_ptr() }
+    }
+
+    unsafe fn from_native(val: &'a ffi::module::ModuleLoaderInterface) -> Self {
+        NativeModuleLoader::from_native(val.get_internal_interface())
+    }
+}
+
+impl<'a> FFIObject<&'a ffi::module::NativeModuleLoaderInterface> for NativeModuleLoader<'a> {
+    fn as_native(&self) -> &'a ffi::module::NativeModuleLoaderInterface {
+        self.interface
+    }
+
+    unsafe fn from_native(val: &'a ffi::module::NativeModuleLoaderInterface) -> Self {
+        Self { interface: val }
+    }
+}
+
+impl<'a> FFIObject<NonNullConst<c_void>> for NativeModuleLoader<'a> {
+    fn as_native(&self) -> NonNullConst<c_void> {
+        NonNullConst::from(self.interface).cast()
+    }
+
+    unsafe fn from_native(val: NonNullConst<c_void>) -> Self {
         Self {
-            interface: &*(v as *const ffi::module::ModuleLoaderInterface
-                as *const ffi::module::NativeModuleLoaderInterface),
+            interface: &*(val.as_ptr() as *const ffi::module::NativeModuleLoaderInterface),
         }
-    }
-}
-
-impl<'a> AsRef<&'a ffi::module::NativeModuleLoaderInterface> for NativeModuleLoader<'a> {
-    fn as_ref(&self) -> &&'a ffi::module::NativeModuleLoaderInterface {
-        &self.interface
-    }
-}
-
-impl<'a> FromFFI<&'a ffi::module::NativeModuleLoaderInterface> for NativeModuleLoader<'a> {
-    unsafe fn from_ffi(v: &'a ffi::module::NativeModuleLoaderInterface) -> Self {
-        Self { interface: v }
     }
 }

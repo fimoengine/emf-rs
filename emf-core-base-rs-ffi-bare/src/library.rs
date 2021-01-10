@@ -231,6 +231,13 @@ pub trait LibraryLoaderInterfaceBinding {
         library_handle: LoaderLibraryHandle,
         symbol_name: NonNullConst<c_char>,
     ) -> Result<FnSymbol, LibraryError>;
+
+    /// Fetches a pointer to the internal interface.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn get_internal_interface(&self) -> NonNullConst<c_void>;
 }
 
 /// A function pointer to a `load` function.
@@ -271,6 +278,13 @@ pub type LoaderInterfaceGetFunctionSymbolFn = extern "C" fn(
     symbol_name: NonNullConst<c_char>,
 ) -> Result<FnSymbol, LibraryError>;
 
+/// A function pointer to a `get_internal_interface` function.
+///
+/// The function fetches a pointer to the internal interface of the loader.
+/// The function must be thread-safe.
+pub type LoaderInterfaceGetInternalInterfaceFn =
+    extern "C" fn(library_loader: *mut LibraryLoader) -> NonNullConst<c_void>;
+
 /// Interface of a library loader.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -280,6 +294,7 @@ pub struct LoaderInterface {
     pub unload_fn: LoaderInterfaceUnloadFn,
     pub get_data_symbol_fn: LoaderInterfaceGetDataSymbolFn,
     pub get_function_symbol_fn: LoaderInterfaceGetFunctionSymbolFn,
+    pub get_internal_interface_fn: LoaderInterfaceGetInternalInterfaceFn,
 }
 
 impl LibraryLoaderInterfaceBinding for LoaderInterface {
@@ -312,6 +327,11 @@ impl LibraryLoaderInterfaceBinding for LoaderInterface {
         symbol_name: NonNullConst<c_char>,
     ) -> Result<FnSymbol, LibraryError> {
         (self.get_function_symbol_fn)(self.library_loader, library_handle, symbol_name)
+    }
+
+    #[inline]
+    unsafe fn get_internal_interface(&self) -> NonNullConst<c_void> {
+        (self.get_internal_interface_fn)(self.library_loader)
     }
 }
 
@@ -372,7 +392,7 @@ pub type NativeLoaderInterfaceLoadExtFn =
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct NativeLoaderInterface {
-    pub library_loader_interface: LoaderInterface,
+    pub library_loader_interface: NonNullConst<LoaderInterface>,
     pub load_ext_fn: NativeLoaderInterfaceLoadExtFn,
 }
 
@@ -382,12 +402,14 @@ impl LibraryLoaderInterfaceBinding for NativeLoaderInterface {
         &self,
         library_path: NonNullConst<OsPathChar>,
     ) -> Result<LoaderLibraryHandle, LibraryError> {
-        self.library_loader_interface.load(library_path)
+        self.library_loader_interface.as_ref().load(library_path)
     }
 
     #[inline]
     unsafe fn unload(&self, library_handle: LoaderLibraryHandle) -> Optional<LibraryError> {
-        self.library_loader_interface.unload(library_handle)
+        self.library_loader_interface
+            .as_ref()
+            .unload(library_handle)
     }
 
     #[inline]
@@ -397,6 +419,7 @@ impl LibraryLoaderInterfaceBinding for NativeLoaderInterface {
         symbol_name: NonNullConst<c_char>,
     ) -> Result<DataSymbol, LibraryError> {
         self.library_loader_interface
+            .as_ref()
             .get_data_symbol(library_handle, symbol_name)
     }
 
@@ -407,7 +430,15 @@ impl LibraryLoaderInterfaceBinding for NativeLoaderInterface {
         symbol_name: NonNullConst<c_char>,
     ) -> Result<FnSymbol, LibraryError> {
         self.library_loader_interface
+            .as_ref()
             .get_function_symbol(library_handle, symbol_name)
+    }
+
+    #[inline]
+    unsafe fn get_internal_interface(&self) -> NonNullConst<c_void> {
+        self.library_loader_interface
+            .as_ref()
+            .get_internal_interface()
     }
 }
 
@@ -421,7 +452,7 @@ impl NativeLibraryLoaderInterfaceBinding for NativeLoaderInterface {
         flags: u32,
     ) -> Result<LoaderLibraryHandle, LibraryError> {
         (self.load_ext_fn)(
-            self.library_loader_interface.library_loader,
+            self.library_loader_interface.as_ref().library_loader,
             library_path,
             h_file,
             flags,
@@ -436,7 +467,7 @@ impl NativeLibraryLoaderInterfaceBinding for NativeLoaderInterface {
         flags: c_int,
     ) -> Result<LoaderLibraryHandle, LibraryError> {
         (self.load_ext_fn)(
-            self.library_loader_interface.library_loader,
+            self.library_loader_interface.as_ref().library_loader,
             library_path,
             flags,
         )

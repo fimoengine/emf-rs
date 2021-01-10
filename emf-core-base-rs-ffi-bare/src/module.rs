@@ -461,6 +461,13 @@ pub trait ModuleLoaderInterfaceBinding {
         &self,
         module_handle: LoaderModuleHandle,
     ) -> Result<NonNullConst<OsPathChar>, ModuleError>;
+
+    /// Fetches the internal interface of the `ModuleLoader`.
+    ///
+    /// # Safety
+    ///
+    /// This function is a low level api and elides lifetimes.
+    unsafe fn get_internal_interface(&self) -> NonNullConst<c_void>;
 }
 
 /// A function pointer to a `add_module` function.
@@ -588,6 +595,13 @@ pub type ModuleLoaderInterfaceGetModulePathFn =
         module_handle: LoaderModuleHandle,
     ) -> Result<NonNullConst<OsPathChar>, ModuleError>;
 
+/// A function pointer to a `get_internal_interface` function.
+///
+/// This function fetches the internal interface of the loader.
+/// The function must be thread-safe.
+pub type ModuleLoaderInterfaceGetInternalInterfaceFn =
+    extern "C" fn(module_loader: *mut ModuleLoader) -> NonNullConst<c_void>;
+
 /// Interface of a module loader.
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -606,6 +620,7 @@ pub struct ModuleLoaderInterface {
     pub get_interface_fn: ModuleLoaderInterfaceGetInterfaceFn,
     pub get_load_dependencies_fn: ModuleLoaderInterfaceGetLoadDependenciesFn,
     pub get_module_path_fn: ModuleLoaderInterfaceGetModulePathFn,
+    pub get_internal_interface_fn: ModuleLoaderInterfaceGetInternalInterfaceFn,
 }
 
 impl ModuleLoaderInterfaceBinding for ModuleLoaderInterface {
@@ -710,6 +725,12 @@ impl ModuleLoaderInterfaceBinding for ModuleLoaderInterface {
         module_handle: LoaderModuleHandle,
     ) -> Result<NonNullConst<OsPathChar>, ModuleError> {
         (self.get_module_path_fn)(self.module_loader, module_handle)
+    }
+
+    #[inline]
+    #[must_use]
+    unsafe fn get_internal_interface(&self) -> NonNullConst<c_void> {
+        (self.get_internal_interface_fn)(self.module_loader)
     }
 }
 
@@ -1086,7 +1107,7 @@ pub type NativeModuleLoaderInterfaceGetNativeModuleFn =
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct NativeModuleLoaderInterface {
-    pub module_loader_interface: ModuleLoaderInterface,
+    pub module_loader_interface: NonNullConst<ModuleLoaderInterface>,
     pub get_native_module_fn: NativeModuleLoaderInterfaceGetNativeModuleFn,
 }
 
@@ -1097,13 +1118,17 @@ impl ModuleLoaderInterfaceBinding for NativeModuleLoaderInterface {
         &self,
         module_path: NonNullConst<OsPathChar>,
     ) -> Result<LoaderModuleHandle, ModuleError> {
-        self.module_loader_interface.add_module(module_path)
+        self.module_loader_interface
+            .as_ref()
+            .add_module(module_path)
     }
 
     #[inline]
     #[must_use]
     unsafe fn remove_module(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError> {
-        self.module_loader_interface.remove_module(module_handle)
+        self.module_loader_interface
+            .as_ref()
+            .remove_module(module_handle)
     }
 
     #[inline]
@@ -1112,31 +1137,37 @@ impl ModuleLoaderInterfaceBinding for NativeModuleLoaderInterface {
         &self,
         module_handle: LoaderModuleHandle,
     ) -> Result<ModuleStatus, ModuleError> {
-        self.module_loader_interface.fetch_status(module_handle)
+        self.module_loader_interface
+            .as_ref()
+            .fetch_status(module_handle)
     }
 
     #[inline]
     #[must_use]
     unsafe fn load(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError> {
-        self.module_loader_interface.load(module_handle)
+        self.module_loader_interface.as_ref().load(module_handle)
     }
 
     #[inline]
     #[must_use]
     unsafe fn unload(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError> {
-        self.module_loader_interface.unload(module_handle)
+        self.module_loader_interface.as_ref().unload(module_handle)
     }
 
     #[inline]
     #[must_use]
     unsafe fn initialize(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError> {
-        self.module_loader_interface.initialize(module_handle)
+        self.module_loader_interface
+            .as_ref()
+            .initialize(module_handle)
     }
 
     #[inline]
     #[must_use]
     unsafe fn terminate(&self, module_handle: LoaderModuleHandle) -> Optional<ModuleError> {
-        self.module_loader_interface.initialize(module_handle)
+        self.module_loader_interface
+            .as_ref()
+            .initialize(module_handle)
     }
 
     #[inline]
@@ -1145,7 +1176,9 @@ impl ModuleLoaderInterfaceBinding for NativeModuleLoaderInterface {
         &self,
         module_handle: LoaderModuleHandle,
     ) -> Result<NonNullConst<ModuleInfo>, ModuleError> {
-        self.module_loader_interface.get_module_info(module_handle)
+        self.module_loader_interface
+            .as_ref()
+            .get_module_info(module_handle)
     }
 
     #[inline]
@@ -1155,6 +1188,7 @@ impl ModuleLoaderInterfaceBinding for NativeModuleLoaderInterface {
         module_handle: LoaderModuleHandle,
     ) -> Result<Span<'static, InterfaceDescriptor<'static>>, ModuleError> {
         self.module_loader_interface
+            .as_ref()
             .get_exportable_interfaces(module_handle)
     }
 
@@ -1165,6 +1199,7 @@ impl ModuleLoaderInterfaceBinding for NativeModuleLoaderInterface {
         module_handle: LoaderModuleHandle,
     ) -> Result<Span<'static, InterfaceDescriptor<'static>>, ModuleError> {
         self.module_loader_interface
+            .as_ref()
             .get_runtime_dependencies(module_handle)
     }
 
@@ -1176,6 +1211,7 @@ impl ModuleLoaderInterfaceBinding for NativeModuleLoaderInterface {
         interface_descriptor: NonNullConst<InterfaceDescriptor>,
     ) -> Result<ModuleInterface, ModuleError> {
         self.module_loader_interface
+            .as_ref()
             .get_interface(module_handle, interface_descriptor)
     }
 
@@ -1186,6 +1222,7 @@ impl ModuleLoaderInterfaceBinding for NativeModuleLoaderInterface {
         module_handle: LoaderModuleHandle,
     ) -> Result<Span<'static, InterfaceDescriptor<'static>>, ModuleError> {
         self.module_loader_interface
+            .as_ref()
             .get_load_dependencies(module_handle)
     }
 
@@ -1195,7 +1232,15 @@ impl ModuleLoaderInterfaceBinding for NativeModuleLoaderInterface {
         &self,
         module_handle: LoaderModuleHandle,
     ) -> Result<NonNullConst<OsPathChar>, ModuleError> {
-        self.module_loader_interface.get_module_path(module_handle)
+        self.module_loader_interface
+            .as_ref()
+            .get_module_path(module_handle)
+    }
+
+    unsafe fn get_internal_interface(&self) -> NonNullConst<c_void> {
+        self.module_loader_interface
+            .as_ref()
+            .get_internal_interface()
     }
 }
 
@@ -1206,7 +1251,10 @@ impl NativeModuleLoaderInterfaceBinding for NativeModuleLoaderInterface {
         &self,
         module_handle: LoaderModuleHandle,
     ) -> Result<*mut NativeModule, ModuleError> {
-        (self.get_native_module_fn)(self.module_loader_interface.module_loader, module_handle)
+        (self.get_native_module_fn)(
+            self.module_loader_interface.as_ref().module_loader,
+            module_handle,
+        )
     }
 }
 
