@@ -714,9 +714,7 @@ impl<'a> FFIObject<&'a ffi::BaseInterface> for BaseInterface<'a> {
     }
 
     unsafe fn from_native(val: &'a ffi::BaseInterface) -> Self {
-        Self {
-            interface: val,
-        }
+        Self { interface: val }
     }
 }
 
