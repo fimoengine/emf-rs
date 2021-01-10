@@ -5,7 +5,7 @@ name: CI
 jobs:
   check:
     name: Check
-    runs-on:  ${{ os }}
+    runs-on:  ${{ matrix.os }}
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
@@ -24,7 +24,7 @@ jobs:
 
   test:
     name: Test Suite
-    runs-on:  ${{ os }}
+    runs-on:  ${{ matrix.os }}
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
@@ -63,7 +63,7 @@ jobs:
 
   clippy:
     name: Clippy
-    runs-on:  ${{ os }}
+    runs-on:  ${{ matrix.os }}
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
