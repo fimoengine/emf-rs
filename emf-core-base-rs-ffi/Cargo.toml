@@ -3,14 +3,8 @@ name = "emf-core-base-rs-ffi"
 version = "0.1.0"
 authors = ["Gabriel Borrelli <gabriel.borrelli@nanoshellsoft.com>"]
 edition = "2018"
-description = "Rust bindings to the emf-core-base interface"
+description = "Rust wrapper of the emf-core-base interface"
 license = "MIT OR Apache-2.0"
 categories = ["game-development"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-[features]
-default = ["global_api"]
-global_api = ["emf-core-base-rs-ffi-bare/global_api"]
-
 [dependencies]
-emf-core-base-rs-ffi-bare = { version = "0.1.0", path = "../emf-core-base-rs-ffi-bare" }
