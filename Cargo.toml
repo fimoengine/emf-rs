@@ -1,8 +1,5 @@
 [workspace]
 
 members = [
-    "emf-core-base-rs",
-    "emf-core-base-rs-bare",
     "emf-core-base-rs-ffi",
-    "emf-core-base-rs-ffi-bare",
 ]
