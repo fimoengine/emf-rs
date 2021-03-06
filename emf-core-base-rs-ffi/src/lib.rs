@@ -14,6 +14,9 @@ mod fn_id;
 #[cfg(feature = "init")]
 mod init;
 
+#[cfg(feature = "extensions")]
+pub mod extensions;
+
 pub mod collections;
 pub mod library;
 pub mod module;

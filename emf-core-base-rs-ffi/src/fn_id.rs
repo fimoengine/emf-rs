@@ -81,4 +81,7 @@ pub enum FnId {
     ModuleGetModulePath = 333,
     ModuleGetModuleInfo = 334,
     ModuleGetInterface = 335,
+
+    #[cfg(feature = "unwind_internal")]
+    ExtGetUnwindInternalInterface = 51,
 }
