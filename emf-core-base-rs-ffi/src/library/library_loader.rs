@@ -5,7 +5,7 @@ use crate::collections::{NonNullConst, Result};
 use crate::library::{Error, InternalHandle, OSPathChar, Symbol};
 use crate::CBaseFn;
 use std::ffi::c_void;
-#[cfg(any(windows, doc))]
+#[cfg(windows)]
 use std::os::windows::raw::HANDLE;
 use std::ptr::NonNull;
 
@@ -194,13 +194,11 @@ impl LibraryLoaderBinding for LibraryLoaderInterface {
 }
 
 /// Type used by unix to identify a library.
-#[doc(cfg(unix))]
-#[cfg(any(unix, doc))]
+#[cfg(unix)]
 pub type NativeLibraryHandleUnix = *mut c_void;
 
 /// Type used by windows to identify a library.
-#[doc(cfg(windows))]
-#[cfg(any(windows, doc))]
+#[cfg(windows)]
 pub type NativeLibraryHandleWindows = HANDLE;
 
 /// Type used by the os to identify a library.
@@ -211,16 +209,14 @@ pub type NativeLibraryHandle = NativeLibraryHandleUnix;
 #[cfg(windows)]
 pub type NativeLibraryHandle = NativeLibraryHandleWindows;
 
-#[doc(cfg(unix))]
-#[cfg(any(unix, doc))]
+#[cfg(unix)]
 pub type LoadExtFnUnix = unsafe extern "C" fn(
     loader: Option<NonNull<LibraryLoader>>,
     path: NonNullConst<OSPathChar>,
     flags: i32,
 ) -> Result<InternalHandle, Error>;
 
-#[doc(cfg(windows))]
-#[cfg(any(windows, doc))]
+#[cfg(windows)]
 pub type LoadExtFnWindows = unsafe extern "C" fn(
     loader: Option<NonNull<LibraryLoader>>,
     path: NonNullConst<OSPathChar>,
@@ -251,8 +247,7 @@ pub struct NativeLibraryLoaderInterface {
 unsafe impl Send for NativeLibraryLoaderInterface {}
 unsafe impl Sync for NativeLibraryLoaderInterface {}
 
-#[doc(cfg(unix))]
-#[cfg(any(unix, doc))]
+#[cfg(unix)]
 pub trait NativeLibraryLoaderBindingUnix: LibraryLoaderBinding {
     /// Loads a library. The resulting handle is unique.
     ///
@@ -299,8 +294,7 @@ pub trait NativeLibraryLoaderBindingUnix: LibraryLoaderBinding {
     ) -> Result<NativeLibraryHandle, Error>;
 }
 
-#[doc(cfg(windows))]
-#[cfg(any(windows, doc))]
+#[cfg(windows)]
 pub trait NativeLibraryLoaderBindingWindows: LibraryLoaderBinding {
     /// Loads a library. The resulting handle is unique.
     ///
@@ -384,8 +378,7 @@ impl LibraryLoaderBinding for NativeLibraryLoaderInterface {
 }
 
 /// Helper trait for using a native library loader.
-#[doc(cfg(unix))]
-#[cfg(any(unix, doc))]
+#[cfg(unix)]
 impl NativeLibraryLoaderBindingUnix for NativeLibraryLoaderInterface {
     #[inline]
     unsafe fn load_ext(
@@ -406,8 +399,7 @@ impl NativeLibraryLoaderBindingUnix for NativeLibraryLoaderInterface {
 }
 
 /// Helper trait for using a native library loader.
-#[doc(cfg(windows))]
-#[cfg(any(windows, doc))]
+#[cfg(windows)]
 impl NativeLibraryLoaderBindingWindows for NativeLibraryLoaderInterface {
     #[inline]
     unsafe fn load_ext(

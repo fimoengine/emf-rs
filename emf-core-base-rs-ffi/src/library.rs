@@ -102,13 +102,9 @@ pub enum Error {
 }
 
 /// Character type of a windows path.
-#[doc(cfg(windows))]
-#[cfg(any(windows, doc))]
 pub type OSPathCharWindows = u16;
 
 /// Character type of a unix path.
-#[doc(cfg(unix))]
-#[cfg(any(unix, doc))]
 pub type OSPathCharUnix = u8;
 
 /// Character type of a path.
