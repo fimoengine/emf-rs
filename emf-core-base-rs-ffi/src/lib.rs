@@ -7,8 +7,6 @@
 //!
 //! Most of the interface is not thread-safe and must be manually synchronised with
 //! [sys::api::SysBinding::lock] or [sys::api::SysBinding::try_lock].
-#![feature(doc_cfg)]
-
 mod boolean;
 mod cbase;
 mod fn_id;
