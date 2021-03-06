@@ -9,3 +9,6 @@ categories = ["game-development"]
 
 [features]
 init = []
+extensions = []
+unwind_internal = ["extensions"]
+extensions_all = ["unwind_internal"]
