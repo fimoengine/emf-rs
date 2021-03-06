@@ -7,4 +7,5 @@ description = "Rust wrapper of the emf-core-base interface"
 license = "MIT OR Apache-2.0"
 categories = ["game-development"]
 
-[dependencies]
+[features]
+init = []
