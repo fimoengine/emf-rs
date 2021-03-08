@@ -72,9 +72,13 @@ where
 {
     /// Sets a new unwinding context.
     ///
+    /// # Note
+    ///
+    /// Passing [Option::None] uses the default context.
+    ///
     /// # Safety
     ///
-    /// The function is not thread-safe and crosses the ffi boundary.
+    /// The function crosses the ffi boundary.
     unsafe fn set_context(&mut self, base_module: &T, context: Option<NonNull<Context>>);
 
     /// Fetches the current unwinding context.
@@ -85,7 +89,7 @@ where
     ///
     /// # Safety
     ///
-    /// The function is not thread-safe and crosses the ffi boundary.
+    /// The function crosses the ffi boundary.
     unsafe fn get_context(&self, base_module: &T) -> Option<NonNull<Context>>;
 
     /// Sets a new shutdown function.
@@ -96,7 +100,7 @@ where
     ///
     /// # Safety
     ///
-    /// The function is not thread-safe and crosses the ffi boundary.
+    /// The function crosses the ffi boundary.
     unsafe fn set_shutdown_fn(&mut self, base_module: &T, shutdown_fn: Option<ShutdownFn>);
 
     /// Fetches the current shutdown function.
@@ -107,7 +111,7 @@ where
     ///
     /// # Safety
     ///
-    /// The function is not thread-safe and crosses the ffi boundary.
+    /// The function crosses the ffi boundary.
     unsafe fn get_shutdown_fn(&self, base_module: &T) -> Option<ShutdownFn>;
 
     /// Sets a new panic function.
@@ -118,7 +122,7 @@ where
     ///
     /// # Safety
     ///
-    /// The function is not thread-safe and crosses the ffi boundary.
+    /// The function crosses the ffi boundary.
     unsafe fn set_panic_fn(&mut self, base_module: &T, panic_fn: Option<PanicFn>);
 
     /// Fetches the current panic function.
@@ -129,7 +133,7 @@ where
     ///
     /// # Safety
     ///
-    /// The function is not thread-safe and crosses the ffi boundary.
+    /// The function crosses the ffi boundary.
     unsafe fn get_panic_fn(&self, base_module: &T) -> Option<PanicFn>;
 }
 
