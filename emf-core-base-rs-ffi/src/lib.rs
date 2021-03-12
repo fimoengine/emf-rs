@@ -7,9 +7,11 @@
 //!
 //! Most of the interface is not thread-safe and must be manually synchronised with
 //! [sys::api::SysBinding::lock] or [sys::api::SysBinding::try_lock].
+#![feature(c_unwind)]
 mod boolean;
 mod cbase;
 mod fn_id;
+mod type_wrapper;
 
 #[cfg(feature = "init")]
 mod init;
@@ -25,14 +27,7 @@ pub mod version;
 pub use boolean::Bool;
 pub use cbase::{CBase, CBaseBinding, CBaseFn, CBaseInterface, CBASE_INTERFACE_NAME};
 pub use fn_id::FnId;
+pub use type_wrapper::TypeWrapper;
 
 #[cfg(feature = "init")]
 pub use init::CBaseLoader;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}

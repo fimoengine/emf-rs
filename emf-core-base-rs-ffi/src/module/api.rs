@@ -8,183 +8,242 @@ use crate::module::{
     Error, Interface, InterfaceDescriptor, InternalHandle, LoaderHandle, ModuleHandle, ModuleInfo,
     ModuleStatus, ModuleType,
 };
-use crate::{Bool, CBase, CBaseInterface};
+use crate::{Bool, CBase, CBaseInterface, TypeWrapper};
 use std::ptr::NonNull;
 
-pub type RegisterLoaderFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    loader: NonNullConst<ModuleLoaderInterface>,
-    mod_type: NonNullConst<ModuleType>,
-) -> Result<LoaderHandle, Error>;
+pub type RegisterLoaderFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        loader: NonNullConst<ModuleLoaderInterface>,
+        mod_type: NonNullConst<ModuleType>,
+    ) -> Result<LoaderHandle, Error>,
+>;
 
-pub type UnregisterLoaderFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    loader: LoaderHandle,
-) -> Result<i8, Error>;
-
-pub type GetLoaderInterfaceFn =
-    unsafe extern "C" fn(
+pub type UnregisterLoaderFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
         loader: LoaderHandle,
-    ) -> Result<NonNullConst<ModuleLoaderInterface>, Error>;
+    ) -> Result<i8, Error>,
+>;
 
-pub type GetLoaderHandleFromTypeFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    mod_type: NonNullConst<ModuleType>,
-) -> Result<LoaderHandle, Error>;
+pub type GetLoaderInterfaceFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        loader: LoaderHandle,
+    ) -> Result<NonNullConst<ModuleLoaderInterface>, Error>,
+>;
 
-pub type GetLoaderHandleFromModuleFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: ModuleHandle,
-) -> Result<LoaderHandle, Error>;
+pub type GetLoaderHandleFromTypeFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        mod_type: NonNullConst<ModuleType>,
+    ) -> Result<LoaderHandle, Error>,
+>;
 
-pub type GetNumModulesFn = unsafe extern "C" fn(base_module: Option<NonNull<CBase>>) -> usize;
+pub type GetLoaderHandleFromModuleFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: ModuleHandle,
+    ) -> Result<LoaderHandle, Error>,
+>;
 
-pub type GetNumLoadersFn = unsafe extern "C" fn(base_module: Option<NonNull<CBase>>) -> usize;
+pub type GetNumModulesFn =
+    TypeWrapper<unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>) -> usize>;
+
+pub type GetNumLoadersFn =
+    TypeWrapper<unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>) -> usize>;
 
 pub type GetNumExportedInterfacesFn =
-    unsafe extern "C" fn(base_module: Option<NonNull<CBase>>) -> usize;
+    TypeWrapper<unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>) -> usize>;
 
-pub type ModuleExistsFn =
-    unsafe extern "C" fn(base_module: Option<NonNull<CBase>>, handle: ModuleHandle) -> Bool;
+pub type ModuleExistsFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>, handle: ModuleHandle) -> Bool,
+>;
 
-pub type TypeExistsFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    mod_type: NonNullConst<ModuleType>,
-) -> Bool;
+pub type TypeExistsFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        mod_type: NonNullConst<ModuleType>,
+    ) -> Bool,
+>;
 
-pub type ExportedInterfaceExistsFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    interface: NonNullConst<InterfaceDescriptor>,
-) -> Bool;
+pub type ExportedInterfaceExistsFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        interface: NonNullConst<InterfaceDescriptor>,
+    ) -> Bool,
+>;
 
-pub type GetModulesFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    buffer: NonNull<MutSpan<ModuleInfo>>,
-) -> Result<usize, Error>;
+pub type GetModulesFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        buffer: NonNull<MutSpan<ModuleInfo>>,
+    ) -> Result<usize, Error>,
+>;
 
-pub type GetModuleTypesFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    buffer: NonNull<MutSpan<ModuleType>>,
-) -> Result<usize, Error>;
+pub type GetModuleTypesFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        buffer: NonNull<MutSpan<ModuleType>>,
+    ) -> Result<usize, Error>,
+>;
 
-pub type GetExportedInterfacesFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    buffer: NonNull<MutSpan<InterfaceDescriptor>>,
-) -> Result<usize, Error>;
+pub type GetExportedInterfacesFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        buffer: NonNull<MutSpan<InterfaceDescriptor>>,
+    ) -> Result<usize, Error>,
+>;
 
-pub type GetExportedInterfaceHandleFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    interface: NonNullConst<InterfaceDescriptor>,
-) -> Result<ModuleHandle, Error>;
+pub type GetExportedInterfaceHandleFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        interface: NonNullConst<InterfaceDescriptor>,
+    ) -> Result<ModuleHandle, Error>,
+>;
 
 pub type CreateModuleHandleFn =
-    unsafe extern "C" fn(base_module: Option<NonNull<CBase>>) -> ModuleHandle;
+    TypeWrapper<unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>) -> ModuleHandle>;
 
-pub type RemoveModuleHandleFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: ModuleHandle,
-) -> Result<i8, Error>;
-
-pub type LinkModuleFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: ModuleHandle,
-    loader: LoaderHandle,
-    internal: InternalHandle,
-) -> Result<i8, Error>;
-
-pub type GetInternalModuleHandleFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: ModuleHandle,
-) -> Result<InternalHandle, Error>;
-
-pub type AddModuleFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    loader: LoaderHandle,
-    path: NonNullConst<OSPathChar>,
-) -> Result<ModuleHandle, Error>;
-
-pub type RemoveModuleFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: ModuleHandle,
-) -> Result<i8, Error>;
-
-pub type LoadFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: ModuleHandle,
-) -> Result<i8, Error>;
-
-pub type UnloadFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: ModuleHandle,
-) -> Result<i8, Error>;
-
-pub type InitializeFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: ModuleHandle,
-) -> Result<i8, Error>;
-
-pub type TerminateFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: ModuleHandle,
-) -> Result<i8, Error>;
-
-pub type AddDependencyFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: ModuleHandle,
-    interface: NonNullConst<InterfaceDescriptor>,
-) -> Result<i8, Error>;
-
-pub type RemoveDependencyFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: ModuleHandle,
-    interface: NonNullConst<InterfaceDescriptor>,
-) -> Result<i8, Error>;
-
-pub type ExportInterfaceFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: ModuleHandle,
-    interface: NonNullConst<InterfaceDescriptor>,
-) -> Result<i8, Error>;
-
-pub type GetLoadDependenciesFn =
-    unsafe extern "C" fn(
+pub type RemoveModuleHandleFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
         handle: ModuleHandle,
-    ) -> Result<ConstSpan<InterfaceDescriptor>, Error>;
+    ) -> Result<i8, Error>,
+>;
 
-pub type GetRuntimeDependenciesFn =
-    unsafe extern "C" fn(
+pub type LinkModuleFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
         handle: ModuleHandle,
-    ) -> Result<ConstSpan<InterfaceDescriptor>, Error>;
+        loader: LoaderHandle,
+        internal: InternalHandle,
+    ) -> Result<i8, Error>,
+>;
 
-pub type GetExportableInterfacesFn =
-    unsafe extern "C" fn(
+pub type GetInternalModuleHandleFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
         handle: ModuleHandle,
-    ) -> Result<ConstSpan<InterfaceDescriptor>, Error>;
+    ) -> Result<InternalHandle, Error>,
+>;
 
-pub type FetchStatusFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: ModuleHandle,
-) -> Result<ModuleStatus, Error>;
+pub type AddModuleFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        loader: LoaderHandle,
+        path: NonNullConst<OSPathChar>,
+    ) -> Result<ModuleHandle, Error>,
+>;
 
-pub type GetModulePathFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: ModuleHandle,
-) -> Result<NonNullConst<OSPathChar>, Error>;
+pub type RemoveModuleFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: ModuleHandle,
+    ) -> Result<i8, Error>,
+>;
 
-pub type GetModuleInfoFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: ModuleHandle,
-) -> Result<NonNullConst<ModuleInfo>, Error>;
+pub type LoadFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: ModuleHandle,
+    ) -> Result<i8, Error>,
+>;
 
-pub type GetInterfaceFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: ModuleHandle,
-    interface: NonNullConst<InterfaceDescriptor>,
-) -> Result<Interface, Error>;
+pub type UnloadFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: ModuleHandle,
+    ) -> Result<i8, Error>,
+>;
+
+pub type InitializeFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: ModuleHandle,
+    ) -> Result<i8, Error>,
+>;
+
+pub type TerminateFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: ModuleHandle,
+    ) -> Result<i8, Error>,
+>;
+
+pub type AddDependencyFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: ModuleHandle,
+        interface: NonNullConst<InterfaceDescriptor>,
+    ) -> Result<i8, Error>,
+>;
+
+pub type RemoveDependencyFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: ModuleHandle,
+        interface: NonNullConst<InterfaceDescriptor>,
+    ) -> Result<i8, Error>,
+>;
+
+pub type ExportInterfaceFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: ModuleHandle,
+        interface: NonNullConst<InterfaceDescriptor>,
+    ) -> Result<i8, Error>,
+>;
+
+pub type GetLoadDependenciesFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: ModuleHandle,
+    ) -> Result<ConstSpan<InterfaceDescriptor>, Error>,
+>;
+
+pub type GetRuntimeDependenciesFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: ModuleHandle,
+    ) -> Result<ConstSpan<InterfaceDescriptor>, Error>,
+>;
+
+pub type GetExportableInterfacesFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: ModuleHandle,
+    ) -> Result<ConstSpan<InterfaceDescriptor>, Error>,
+>;
+
+pub type FetchStatusFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: ModuleHandle,
+    ) -> Result<ModuleStatus, Error>,
+>;
+
+pub type GetModulePathFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: ModuleHandle,
+    ) -> Result<NonNullConst<OSPathChar>, Error>,
+>;
+
+pub type GetModuleInfoFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: ModuleHandle,
+    ) -> Result<NonNullConst<ModuleInfo>, Error>,
+>;
+
+pub type GetInterfaceFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: ModuleHandle,
+        interface: NonNullConst<InterfaceDescriptor>,
+    ) -> Result<Interface, Error>,
+>;
 
 /// Helper trait for using the module api.
 pub trait ModuleBinding {
@@ -240,7 +299,7 @@ pub trait ModuleBinding {
     ///
     /// The function is not thread-safe and crosses the ffi boundary.
     unsafe fn get_loader_interface(
-        &self,
+        &mut self,
         loader: LoaderHandle,
     ) -> Result<NonNullConst<ModuleLoaderInterface>, Error>;
 
@@ -794,7 +853,7 @@ impl ModuleBinding for CBaseInterface {
 
     #[inline]
     unsafe fn get_loader_interface(
-        &self,
+        &mut self,
         loader: LoaderHandle,
     ) -> Result<NonNullConst<ModuleLoaderInterface>, Error> {
         (self.module_get_loader_interface_fn)(self.base_module, loader)

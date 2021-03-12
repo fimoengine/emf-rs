@@ -6,94 +6,123 @@ use crate::library::library_loader::LibraryLoaderInterface;
 use crate::library::{
     Error, InternalHandle, LibraryHandle, LibraryType, LoaderHandle, OSPathChar, Symbol,
 };
-use crate::{Bool, CBase, CBaseFn, CBaseInterface};
+use crate::{Bool, CBase, CBaseFn, CBaseInterface, TypeWrapper};
 use std::ffi::c_void;
 use std::ptr::NonNull;
 
-pub type RegisterLoaderFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    loader: NonNullConst<LibraryLoaderInterface>,
-    lib_type: NonNullConst<LibraryType>,
-) -> Result<LoaderHandle, Error>;
+pub type RegisterLoaderFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        loader: NonNullConst<LibraryLoaderInterface>,
+        lib_type: NonNullConst<LibraryType>,
+    ) -> Result<LoaderHandle, Error>,
+>;
 
-pub type UnregisterLoaderFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: LoaderHandle,
-) -> Result<i8, Error>;
-
-pub type GetLoaderInterfaceFn =
-    unsafe extern "C" fn(
+pub type UnregisterLoaderFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
         handle: LoaderHandle,
-    ) -> Result<NonNullConst<LibraryLoaderInterface>, Error>;
+    ) -> Result<i8, Error>,
+>;
 
-pub type GetLoaderHandleFromTypeFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    lib_type: NonNullConst<LibraryType>,
-) -> Result<LoaderHandle, Error>;
+pub type GetLoaderInterfaceFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: LoaderHandle,
+    ) -> Result<NonNullConst<LibraryLoaderInterface>, Error>,
+>;
 
-pub type GetLoaderHandleFromLibraryFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: LibraryHandle,
-) -> Result<LoaderHandle, Error>;
+pub type GetLoaderHandleFromTypeFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        lib_type: NonNullConst<LibraryType>,
+    ) -> Result<LoaderHandle, Error>,
+>;
 
-pub type GetNumLoadersFn = unsafe extern "C" fn(base_module: Option<NonNull<CBase>>) -> usize;
+pub type GetLoaderHandleFromLibraryFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: LibraryHandle,
+    ) -> Result<LoaderHandle, Error>,
+>;
 
-pub type LibraryExistsFn =
-    unsafe extern "C" fn(base_module: Option<NonNull<CBase>>, handle: LibraryHandle) -> Bool;
+pub type GetNumLoadersFn =
+    TypeWrapper<unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>) -> usize>;
 
-pub type TypeExistsFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    lib_type: NonNullConst<LibraryType>,
-) -> Bool;
+pub type LibraryExistsFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>, handle: LibraryHandle) -> Bool,
+>;
 
-pub type GetLibraryTypesFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    buffer: NonNull<MutSpan<LibraryType>>,
-) -> Result<usize, Error>;
+pub type TypeExistsFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        lib_type: NonNullConst<LibraryType>,
+    ) -> Bool,
+>;
+
+pub type GetLibraryTypesFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        buffer: NonNull<MutSpan<LibraryType>>,
+    ) -> Result<usize, Error>,
+>;
 
 pub type CreateLibraryHandleFn =
-    unsafe extern "C" fn(base_module: Option<NonNull<CBase>>) -> LibraryHandle;
+    TypeWrapper<unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>) -> LibraryHandle>;
 
-pub type RemoveLibraryHandleFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: LibraryHandle,
-) -> Result<i8, Error>;
+pub type RemoveLibraryHandleFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: LibraryHandle,
+    ) -> Result<i8, Error>,
+>;
 
-pub type LinkLibraryFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: LibraryHandle,
-    loader: LoaderHandle,
-    internal: InternalHandle,
-) -> Result<i8, Error>;
+pub type LinkLibraryFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: LibraryHandle,
+        loader: LoaderHandle,
+        internal: InternalHandle,
+    ) -> Result<i8, Error>,
+>;
 
-pub type GetInternalLibraryHandleFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: LibraryHandle,
-) -> Result<InternalHandle, Error>;
+pub type GetInternalLibraryHandleFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: LibraryHandle,
+    ) -> Result<InternalHandle, Error>,
+>;
 
-pub type LoadFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    loader: LoaderHandle,
-    path: NonNullConst<OSPathChar>,
-) -> Result<LibraryHandle, Error>;
+pub type LoadFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        loader: LoaderHandle,
+        path: NonNullConst<OSPathChar>,
+    ) -> Result<LibraryHandle, Error>,
+>;
 
-pub type UnloadFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: LibraryHandle,
-) -> Result<i8, Error>;
+pub type UnloadFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: LibraryHandle,
+    ) -> Result<i8, Error>,
+>;
 
-pub type GetDataSymbolFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: LibraryHandle,
-    symbol: NonNullConst<u8>,
-) -> Result<Symbol<NonNullConst<c_void>>, Error>;
+pub type GetDataSymbolFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: LibraryHandle,
+        symbol: NonNullConst<u8>,
+    ) -> Result<Symbol<NonNullConst<c_void>>, Error>,
+>;
 
-pub type GetFunctionSymbolFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handle: LibraryHandle,
-    symbol: NonNullConst<u8>,
-) -> Result<Symbol<CBaseFn>, Error>;
+pub type GetFunctionSymbolFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handle: LibraryHandle,
+        symbol: NonNullConst<u8>,
+    ) -> Result<Symbol<CBaseFn>, Error>,
+>;
 
 /// Helper trait for using the library api.
 pub trait LibraryBinding {
