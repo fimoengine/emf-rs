@@ -3,33 +3,45 @@
 //! The sys api is exposed by the [SysBinding] trait.
 use crate::collections::{NonNullConst, Optional};
 use crate::sys::sync_handler::SyncHandlerInterface;
-use crate::{Bool, CBase, CBaseFn, CBaseInterface, FnId};
+use crate::{Bool, CBase, CBaseFn, CBaseInterface, FnId, TypeWrapper};
 use std::ptr::NonNull;
 
-pub type ShutdownFn = unsafe extern "C" fn(base_module: Option<NonNull<CBase>>) -> !;
+pub type ShutdownFn =
+    TypeWrapper<unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>) -> !>;
 
-pub type PanicFn =
-    unsafe extern "C" fn(base_module: Option<NonNull<CBase>>, error: Option<NonNullConst<u8>>) -> !;
+pub type PanicFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        error: Option<NonNullConst<u8>>,
+    ) -> !,
+>;
 
 pub type HasFunctionFn =
-    unsafe extern "C" fn(base_module: Option<NonNull<CBase>>, id: FnId) -> Bool;
+    TypeWrapper<unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>, id: FnId) -> Bool>;
 
-pub type GetFunctionFn =
-    unsafe extern "C" fn(base_module: Option<NonNull<CBase>>, id: FnId) -> Optional<CBaseFn>;
+pub type GetFunctionFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>, id: FnId) -> Optional<CBaseFn>,
+>;
 
-pub type LockFn = unsafe extern "C" fn(base_module: Option<NonNull<CBase>>);
+pub type LockFn = TypeWrapper<unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>)>;
 
-pub type TryLockFn = unsafe extern "C" fn(base_module: Option<NonNull<CBase>>) -> Bool;
+pub type TryLockFn =
+    TypeWrapper<unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>) -> Bool>;
 
-pub type UnlockFn = unsafe extern "C" fn(base_module: Option<NonNull<CBase>>);
+pub type UnlockFn = TypeWrapper<unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>)>;
 
-pub type GetSyncHandlerFn =
-    unsafe extern "C" fn(base_module: Option<NonNull<CBase>>) -> NonNullConst<SyncHandlerInterface>;
+pub type GetSyncHandlerFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+    ) -> NonNullConst<SyncHandlerInterface>,
+>;
 
-pub type SetSyncHandlerFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    handler: Option<NonNullConst<SyncHandlerInterface>>,
-);
+pub type SetSyncHandlerFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        handler: Option<NonNullConst<SyncHandlerInterface>>,
+    ),
+>;
 
 /// Helper trait for using the sys api.
 pub trait SysBinding {
@@ -44,7 +56,7 @@ pub trait SysBinding {
     ///
     /// # Safety
     ///
-    /// The function is not thread-safe and crosses the ffi boundary.
+    /// The function crosses the ffi boundary.
     unsafe fn panic(&self, error: Option<NonNullConst<u8>>) -> !;
 
     /// Checks if a function is implemented.
@@ -55,7 +67,7 @@ pub trait SysBinding {
     ///
     /// # Safety
     ///
-    /// The function is not thread-safe and crosses the ffi boundary.
+    /// The function crosses the ffi boundary.
     unsafe fn has_function(&self, id: FnId) -> Bool;
 
     /// Fetches a function from the interface.
@@ -66,7 +78,7 @@ pub trait SysBinding {
     ///
     /// # Safety
     ///
-    /// The function is not thread-safe and crosses the ffi boundary.
+    /// The function crosses the ffi boundary.
     unsafe fn get_function(&self, id: FnId) -> Optional<CBaseFn>;
 
     /// Locks the interface.

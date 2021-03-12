@@ -1,7 +1,7 @@
 //! The `unwind_internal` extension.
 use crate::collections::NonNullConst;
 use crate::version::ReleaseType;
-use crate::{CBase, CBaseBinding};
+use crate::{CBase, CBaseBinding, TypeWrapper};
 use std::ptr::NonNull;
 
 /// Name of the extension.
@@ -34,21 +34,39 @@ pub struct Context {
     _dummy: [u8; 0],
 }
 
-pub type ShutdownFn = unsafe extern "C" fn(context: Option<NonNull<Context>>) -> !;
-pub type PanicFn =
-    unsafe extern "C" fn(context: Option<NonNull<Context>>, error: Option<NonNullConst<u8>>) -> !;
+pub type ShutdownFn =
+    TypeWrapper<unsafe extern "C-unwind" fn(context: Option<NonNull<Context>>) -> !>;
+pub type PanicFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        context: Option<NonNull<Context>>,
+        error: Option<NonNullConst<u8>>,
+    ) -> !,
+>;
 
-pub type SetContextFn =
-    unsafe extern "C" fn(base_module: Option<NonNull<CBase>>, context: Option<NonNull<Context>>);
-pub type GetContextFn =
-    unsafe extern "C" fn(base_module: Option<NonNull<CBase>>) -> Option<NonNull<Context>>;
-pub type SetShutdownFn =
-    unsafe extern "C" fn(base_module: Option<NonNull<CBase>>, shutdown_fn: Option<ShutdownFn>);
-pub type GetShutdownFn =
-    unsafe extern "C" fn(base_module: Option<NonNull<CBase>>) -> Option<ShutdownFn>;
-pub type SetPanicFn =
-    unsafe extern "C" fn(base_module: Option<NonNull<CBase>>, shutdown_fn: Option<PanicFn>);
-pub type GetPanicFn = unsafe extern "C" fn(base_module: Option<NonNull<CBase>>) -> Option<PanicFn>;
+pub type SetContextFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        context: Option<NonNull<Context>>,
+    ),
+>;
+pub type GetContextFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>) -> Option<NonNull<Context>>,
+>;
+pub type SetShutdownFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        shutdown_fn: Option<ShutdownFn>,
+    ),
+>;
+pub type GetShutdownFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>) -> Option<ShutdownFn>,
+>;
+pub type SetPanicFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>, shutdown_fn: Option<PanicFn>),
+>;
+pub type GetPanicFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>) -> Option<PanicFn>,
+>;
 
 /// Extension interface.
 #[repr(C)]
@@ -172,7 +190,8 @@ where
     }
 }
 
-pub type GetUnwindInternalInterfaceFn =
-    unsafe extern "C" fn(
+pub type GetUnwindInternalInterfaceFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
-    ) -> NonNullConst<UnwindInternalInterface>;
+    ) -> NonNullConst<UnwindInternalInterface>,
+>;

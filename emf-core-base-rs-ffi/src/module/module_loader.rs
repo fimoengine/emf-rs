@@ -7,6 +7,7 @@ use crate::module::native_module::NativeModule;
 use crate::module::{
     Error, Interface, InterfaceDescriptor, InternalHandle, ModuleInfo, ModuleStatus,
 };
+use crate::TypeWrapper;
 use std::ffi::c_void;
 use std::ptr::NonNull;
 
@@ -16,77 +17,101 @@ pub struct ModuleLoader {
     _dummy: [u8; 0],
 }
 
-pub type AddModuleFn = unsafe extern "C" fn(
-    loader: Option<NonNull<ModuleLoader>>,
-    path: NonNullConst<OSPathChar>,
-) -> Result<InternalHandle, Error>;
+pub type AddModuleFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<ModuleLoader>>,
+        path: NonNullConst<OSPathChar>,
+    ) -> Result<InternalHandle, Error>,
+>;
 
-pub type RemoveModuleFn = unsafe extern "C" fn(
-    loader: Option<NonNull<ModuleLoader>>,
-    handle: InternalHandle,
-) -> Result<i8, Error>;
-
-pub type LoadFn = unsafe extern "C" fn(
-    loader: Option<NonNull<ModuleLoader>>,
-    handle: InternalHandle,
-) -> Result<i8, Error>;
-
-pub type UnloadFn = unsafe extern "C" fn(
-    loader: Option<NonNull<ModuleLoader>>,
-    handle: InternalHandle,
-) -> Result<i8, Error>;
-
-pub type InitializeFn = unsafe extern "C" fn(
-    loader: Option<NonNull<ModuleLoader>>,
-    handle: InternalHandle,
-) -> Result<i8, Error>;
-
-pub type TerminateFn = unsafe extern "C" fn(
-    loader: Option<NonNull<ModuleLoader>>,
-    handle: InternalHandle,
-) -> Result<i8, Error>;
-
-pub type FetchStatusFn = unsafe extern "C" fn(
-    loader: Option<NonNull<ModuleLoader>>,
-    handle: InternalHandle,
-) -> Result<ModuleStatus, Error>;
-
-pub type GetInterfaceFn = unsafe extern "C" fn(
-    loader: Option<NonNull<ModuleLoader>>,
-    handle: InternalHandle,
-    interface: NonNullConst<InterfaceDescriptor>,
-) -> Result<Interface, Error>;
-
-pub type GetModuleInfoFn = unsafe extern "C" fn(
-    loader: Option<NonNull<ModuleLoader>>,
-    handle: InternalHandle,
-) -> Result<NonNullConst<ModuleInfo>, Error>;
-
-pub type GetModulePathFn = unsafe extern "C" fn(
-    loader: Option<NonNull<ModuleLoader>>,
-    handle: InternalHandle,
-) -> Result<NonNullConst<OSPathChar>, Error>;
-
-pub type GetLoadDependenciesFn =
-    unsafe extern "C" fn(
+pub type RemoveModuleFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
         loader: Option<NonNull<ModuleLoader>>,
         handle: InternalHandle,
-    ) -> Result<ConstSpan<InterfaceDescriptor>, Error>;
+    ) -> Result<i8, Error>,
+>;
 
-pub type GetRuntimeDependenciesFn =
-    unsafe extern "C" fn(
+pub type LoadFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
         loader: Option<NonNull<ModuleLoader>>,
         handle: InternalHandle,
-    ) -> Result<ConstSpan<InterfaceDescriptor>, Error>;
+    ) -> Result<i8, Error>,
+>;
 
-pub type GetExportableInterfacesFn =
-    unsafe extern "C" fn(
+pub type UnloadFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
         loader: Option<NonNull<ModuleLoader>>,
         handle: InternalHandle,
-    ) -> Result<ConstSpan<InterfaceDescriptor>, Error>;
+    ) -> Result<i8, Error>,
+>;
 
-pub type GetInternalInterfaceFn =
-    unsafe extern "C" fn(loader: Option<NonNull<ModuleLoader>>) -> NonNullConst<c_void>;
+pub type InitializeFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<ModuleLoader>>,
+        handle: InternalHandle,
+    ) -> Result<i8, Error>,
+>;
+
+pub type TerminateFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<ModuleLoader>>,
+        handle: InternalHandle,
+    ) -> Result<i8, Error>,
+>;
+
+pub type FetchStatusFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<ModuleLoader>>,
+        handle: InternalHandle,
+    ) -> Result<ModuleStatus, Error>,
+>;
+
+pub type GetInterfaceFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<ModuleLoader>>,
+        handle: InternalHandle,
+        interface: NonNullConst<InterfaceDescriptor>,
+    ) -> Result<Interface, Error>,
+>;
+
+pub type GetModuleInfoFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<ModuleLoader>>,
+        handle: InternalHandle,
+    ) -> Result<NonNullConst<ModuleInfo>, Error>,
+>;
+
+pub type GetModulePathFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<ModuleLoader>>,
+        handle: InternalHandle,
+    ) -> Result<NonNullConst<OSPathChar>, Error>,
+>;
+
+pub type GetLoadDependenciesFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<ModuleLoader>>,
+        handle: InternalHandle,
+    ) -> Result<ConstSpan<InterfaceDescriptor>, Error>,
+>;
+
+pub type GetRuntimeDependenciesFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<ModuleLoader>>,
+        handle: InternalHandle,
+    ) -> Result<ConstSpan<InterfaceDescriptor>, Error>,
+>;
+
+pub type GetExportableInterfacesFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<ModuleLoader>>,
+        handle: InternalHandle,
+    ) -> Result<ConstSpan<InterfaceDescriptor>, Error>,
+>;
+
+pub type GetInternalInterfaceFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(loader: Option<NonNull<ModuleLoader>>) -> NonNullConst<c_void>,
+>;
 
 /// Interface of a module loader.
 #[repr(C)]
@@ -469,17 +494,19 @@ impl ModuleLoaderBinding for ModuleLoaderInterface {
     }
 }
 
-pub type GetNativeModuleFn = unsafe extern "C" fn(
-    loader: Option<NonNull<ModuleLoader>>,
-    handle: InternalHandle,
-) -> Result<Option<NonNull<NativeModule>>, Error>;
+pub type GetNativeModuleFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<ModuleLoader>>,
+        handle: InternalHandle,
+    ) -> Result<Option<NonNull<NativeModule>>, Error>,
+>;
 
 /// Interface of a native module loader.
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct NativeModuleLoaderInterface {
-    loader: NonNullConst<ModuleLoaderInterface>,
-    get_native_module_fn: GetNativeModuleFn,
+    pub loader: NonNullConst<ModuleLoaderInterface>,
+    pub get_native_module_fn: GetNativeModuleFn,
 }
 
 unsafe impl Send for NativeModuleLoaderInterface {}

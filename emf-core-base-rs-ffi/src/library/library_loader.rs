@@ -3,7 +3,7 @@
 //! Any object that can be wrapped into a [LibraryLoaderInterface] can be used as a library loader.
 use crate::collections::{NonNullConst, Result};
 use crate::library::{Error, InternalHandle, OSPathChar, Symbol};
-use crate::CBaseFn;
+use crate::{CBaseFn, TypeWrapper};
 use std::ffi::c_void;
 #[cfg(windows)]
 use std::os::windows::raw::HANDLE;
@@ -15,30 +15,39 @@ pub struct LibraryLoader {
     _dummy: [u8; 0],
 }
 
-pub type LoadFn = unsafe extern "C" fn(
-    loader: Option<NonNull<LibraryLoader>>,
-    path: NonNullConst<OSPathChar>,
-) -> Result<InternalHandle, Error>;
+pub type LoadFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<LibraryLoader>>,
+        path: NonNullConst<OSPathChar>,
+    ) -> Result<InternalHandle, Error>,
+>;
 
-pub type UnloadFn = unsafe extern "C" fn(
-    loader: Option<NonNull<LibraryLoader>>,
-    handle: InternalHandle,
-) -> Result<i8, Error>;
+pub type UnloadFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<LibraryLoader>>,
+        handle: InternalHandle,
+    ) -> Result<i8, Error>,
+>;
 
-pub type GetDataSymbolFn = unsafe extern "C" fn(
-    loader: Option<NonNull<LibraryLoader>>,
-    handle: InternalHandle,
-    name: NonNullConst<u8>,
-) -> Result<Symbol<NonNullConst<c_void>>, Error>;
+pub type GetDataSymbolFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<LibraryLoader>>,
+        handle: InternalHandle,
+        name: NonNullConst<u8>,
+    ) -> Result<Symbol<NonNullConst<c_void>>, Error>,
+>;
 
-pub type GetFnSymbolFn = unsafe extern "C" fn(
-    loader: Option<NonNull<LibraryLoader>>,
-    handle: InternalHandle,
-    name: NonNullConst<u8>,
-) -> Result<Symbol<CBaseFn>, Error>;
+pub type GetFnSymbolFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<LibraryLoader>>,
+        handle: InternalHandle,
+        name: NonNullConst<u8>,
+    ) -> Result<Symbol<CBaseFn>, Error>,
+>;
 
-pub type GetInternalInterfaceFn =
-    unsafe extern "C" fn(loader: Option<NonNull<LibraryLoader>>) -> NonNullConst<c_void>;
+pub type GetInternalInterfaceFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(loader: Option<NonNull<LibraryLoader>>) -> NonNullConst<c_void>,
+>;
 
 /// Interface of a library loader.
 #[repr(C)]
@@ -210,24 +219,30 @@ pub type NativeLibraryHandle = NativeLibraryHandleUnix;
 pub type NativeLibraryHandle = NativeLibraryHandleWindows;
 
 #[cfg(unix)]
-pub type LoadExtFnUnix = unsafe extern "C" fn(
-    loader: Option<NonNull<LibraryLoader>>,
-    path: NonNullConst<OSPathChar>,
-    flags: i32,
-) -> Result<InternalHandle, Error>;
+pub type LoadExtFnUnix = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<LibraryLoader>>,
+        path: NonNullConst<OSPathChar>,
+        flags: i32,
+    ) -> Result<InternalHandle, Error>,
+>;
 
 #[cfg(windows)]
-pub type LoadExtFnWindows = unsafe extern "C" fn(
-    loader: Option<NonNull<LibraryLoader>>,
-    path: NonNullConst<OSPathChar>,
-    h_file: Option<NonNull<HANDLE>>,
-    flags: u32,
-) -> Result<InternalHandle, Error>;
+pub type LoadExtFnWindows = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<LibraryLoader>>,
+        path: NonNullConst<OSPathChar>,
+        h_file: Option<NonNull<HANDLE>>,
+        flags: u32,
+    ) -> Result<InternalHandle, Error>,
+>;
 
-pub type GetNativeHandleFn = unsafe extern "C" fn(
-    loader: Option<NonNull<LibraryLoader>>,
-    handle: InternalHandle,
-) -> Result<NativeLibraryHandle, Error>;
+pub type GetNativeHandleFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<LibraryLoader>>,
+        handle: InternalHandle,
+    ) -> Result<NativeLibraryHandle, Error>,
+>;
 
 #[cfg(unix)]
 pub type LoadExtFn = LoadExtFnUnix;

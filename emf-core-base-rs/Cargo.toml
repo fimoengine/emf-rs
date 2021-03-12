@@ -1,0 +1,22 @@
+[package]
+name = "emf-core-base-rs"
+version = "0.1.0"
+authors = ["Gabriel Borrelli <gabriel.borrelli@nanoshellsoft.com>"]
+edition = "2018"
+description = "Idiomatic Rust wrapper of the emf-core-base interface"
+license = "MIT OR Apache-2.0"
+categories = ["game-development"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["global_api", "init", "extensions_all"]
+global_api = ["init"]
+init = ["emf-core-base-rs-ffi/init"]
+extensions = ["emf-core-base-rs-ffi/extensions"]
+unwind_internal = ["extensions", "emf-core-base-rs-ffi/unwind_internal"]
+extensions_all = ["unwind_internal", "emf-core-base-rs-ffi/extensions_all"]
+
+[dependencies]
+backtrace = "0.3.56"
+emf-core-base-rs-ffi = { version = "0.1.0", path = "../emf-core-base-rs-ffi" }

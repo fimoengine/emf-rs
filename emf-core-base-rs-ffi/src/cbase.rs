@@ -118,6 +118,12 @@ pub trait CBaseBinding: SysBinding + VersionBinding + LibraryBinding + ModuleBin
 
     /// Returns a handle to the interface.
     fn base_module(&self) -> Option<NonNull<CBase>>;
+
+    /// Returns a fn pointer to the `has_function` fn.
+    fn fetch_has_function_fn(&self) -> sys_api::HasFunctionFn;
+
+    /// Returns a fn pointer to the `get_function` fn.
+    fn fetch_get_function_fn(&self) -> sys_api::GetFunctionFn;
 }
 
 impl CBaseBinding for CBaseInterface {
@@ -129,5 +135,15 @@ impl CBaseBinding for CBaseInterface {
     #[inline]
     fn base_module(&self) -> Option<NonNull<CBase>> {
         self.base_module
+    }
+
+    #[inline]
+    fn fetch_has_function_fn(&self) -> sys_api::HasFunctionFn {
+        self.sys_has_function_fn
+    }
+
+    #[inline]
+    fn fetch_get_function_fn(&self) -> sys_api::GetFunctionFn {
+        self.sys_get_function_fn
     }
 }

@@ -4,7 +4,7 @@
 use crate::collections::{ConstSpan, NonNullConst, Result};
 use crate::module::{Error, Interface, InterfaceDescriptor, ModuleInfo};
 use crate::sys::api::{GetFunctionFn, HasFunctionFn};
-use crate::CBase;
+use crate::{CBase, TypeWrapper};
 use std::ptr::NonNull;
 
 /// Opaque structure representing a native module.
@@ -13,41 +13,53 @@ pub struct NativeModule {
     _dummy: [u8; 0],
 }
 
-pub type LoadFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    has_function_fn: HasFunctionFn,
-    get_function_fn: GetFunctionFn,
-) -> Result<Option<NonNull<NativeModule>>, Error>;
+pub type LoadFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        has_function_fn: HasFunctionFn,
+        get_function_fn: GetFunctionFn,
+    ) -> Result<Option<NonNull<NativeModule>>, Error>,
+>;
 
-pub type UnloadFn =
-    unsafe extern "C" fn(module: Option<NonNull<NativeModule>>) -> Result<i8, Error>;
+pub type UnloadFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(module: Option<NonNull<NativeModule>>) -> Result<i8, Error>,
+>;
 
-pub type InitializeFn =
-    unsafe extern "C" fn(module: Option<NonNull<NativeModule>>) -> Result<i8, Error>;
+pub type InitializeFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(module: Option<NonNull<NativeModule>>) -> Result<i8, Error>,
+>;
 
-pub type TerminateFn =
-    unsafe extern "C" fn(module: Option<NonNull<NativeModule>>) -> Result<i8, Error>;
+pub type TerminateFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(module: Option<NonNull<NativeModule>>) -> Result<i8, Error>,
+>;
 
-pub type GetInterfaceFn = unsafe extern "C" fn(
-    module: Option<NonNull<NativeModule>>,
-    interface: NonNullConst<InterfaceDescriptor>,
-) -> Result<Interface, Error>;
-
-pub type GetModuleInfoFn = unsafe extern "C" fn(
-    module: Option<NonNull<NativeModule>>,
-) -> Result<NonNullConst<ModuleInfo>, Error>;
-
-pub type GetLoadDependenciesFn = unsafe extern "C" fn() -> ConstSpan<InterfaceDescriptor>;
-
-pub type GetRuntimeDependenciesFn =
-    unsafe extern "C" fn(
+pub type GetInterfaceFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
         module: Option<NonNull<NativeModule>>,
-    ) -> Result<ConstSpan<InterfaceDescriptor>, Error>;
+        interface: NonNullConst<InterfaceDescriptor>,
+    ) -> Result<Interface, Error>,
+>;
 
-pub type GetExportableInterfacesFn =
-    unsafe extern "C" fn(
+pub type GetModuleInfoFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
         module: Option<NonNull<NativeModule>>,
-    ) -> Result<ConstSpan<InterfaceDescriptor>, Error>;
+    ) -> Result<NonNullConst<ModuleInfo>, Error>,
+>;
+
+pub type GetLoadDependenciesFn =
+    TypeWrapper<unsafe extern "C-unwind" fn() -> ConstSpan<InterfaceDescriptor>>;
+
+pub type GetRuntimeDependenciesFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        module: Option<NonNull<NativeModule>>,
+    ) -> Result<ConstSpan<InterfaceDescriptor>, Error>,
+>;
+
+pub type GetExportableInterfacesFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        module: Option<NonNull<NativeModule>>,
+    ) -> Result<ConstSpan<InterfaceDescriptor>, Error>,
+>;
 
 /// Interface of a native module.
 #[repr(C)]

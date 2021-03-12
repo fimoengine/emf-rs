@@ -3,101 +3,131 @@
 //! The version api is exposed by the [VersionBinding] trait.
 use crate::collections::{ConstSpan, MutSpan, NonNullConst, Result};
 use crate::version::{Error, ReleaseType, Version};
-use crate::{Bool, CBase, CBaseInterface};
+use crate::{Bool, CBase, CBaseInterface, TypeWrapper};
 use std::ptr::NonNull;
 
-pub type NewShortFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    major: i32,
-    minor: i32,
-    patch: i32,
-) -> Version;
+pub type NewShortFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        major: i32,
+        minor: i32,
+        patch: i32,
+    ) -> Version,
+>;
 
-pub type NewLongFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    major: i32,
-    minor: i32,
-    patch: i32,
-    release_type: ReleaseType,
-    release_number: i8,
-) -> Version;
+pub type NewLongFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        major: i32,
+        minor: i32,
+        patch: i32,
+        release_type: ReleaseType,
+        release_number: i8,
+    ) -> Version,
+>;
 
-pub type NewFullFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    major: i32,
-    minor: i32,
-    patch: i32,
-    release_type: ReleaseType,
-    release_number: i8,
-    build: i64,
-) -> Version;
+pub type NewFullFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        major: i32,
+        minor: i32,
+        patch: i32,
+        release_type: ReleaseType,
+        release_number: i8,
+        build: i64,
+    ) -> Version,
+>;
 
-pub type FromStringFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    buffer: NonNullConst<ConstSpan<u8>>,
-) -> Result<Version, Error>;
+pub type FromStringFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        buffer: NonNullConst<ConstSpan<u8>>,
+    ) -> Result<Version, Error>,
+>;
 
-pub type StringLengthShortFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    version: NonNullConst<Version>,
-) -> usize;
+pub type StringLengthShortFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        version: NonNullConst<Version>,
+    ) -> usize,
+>;
 
-pub type StringLengthLongFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    version: NonNullConst<Version>,
-) -> usize;
+pub type StringLengthLongFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        version: NonNullConst<Version>,
+    ) -> usize,
+>;
 
-pub type StringLengthFullFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    version: NonNullConst<Version>,
-) -> usize;
+pub type StringLengthFullFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        version: NonNullConst<Version>,
+    ) -> usize,
+>;
 
-pub type AsStringShortFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    version: NonNullConst<Version>,
-    buffer: NonNull<MutSpan<u8>>,
-) -> Result<usize, Error>;
+pub type AsStringShortFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        version: NonNullConst<Version>,
+        buffer: NonNull<MutSpan<u8>>,
+    ) -> Result<usize, Error>,
+>;
 
-pub type AsStringLongFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    version: NonNullConst<Version>,
-    buffer: NonNull<MutSpan<u8>>,
-) -> Result<usize, Error>;
+pub type AsStringLongFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        version: NonNullConst<Version>,
+        buffer: NonNull<MutSpan<u8>>,
+    ) -> Result<usize, Error>,
+>;
 
-pub type AsStringFullFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    version: NonNullConst<Version>,
-    buffer: NonNull<MutSpan<u8>>,
-) -> Result<usize, Error>;
+pub type AsStringFullFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        version: NonNullConst<Version>,
+        buffer: NonNull<MutSpan<u8>>,
+    ) -> Result<usize, Error>,
+>;
 
-pub type StringIsValidFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    version_string: NonNullConst<ConstSpan<u8>>,
-) -> Bool;
+pub type StringIsValidFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        version_string: NonNullConst<ConstSpan<u8>>,
+    ) -> Bool,
+>;
 
-pub type CompareFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    lhs: NonNullConst<Version>,
-    rhs: NonNullConst<Version>,
-) -> i32;
+pub type CompareFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        lhs: NonNullConst<Version>,
+        rhs: NonNullConst<Version>,
+    ) -> i32,
+>;
 
-pub type CompareWeakFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    lhs: NonNullConst<Version>,
-    rhs: NonNullConst<Version>,
-) -> i32;
+pub type CompareWeakFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        lhs: NonNullConst<Version>,
+        rhs: NonNullConst<Version>,
+    ) -> i32,
+>;
 
-pub type CompareStrongFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    lhs: NonNullConst<Version>,
-    rhs: NonNullConst<Version>,
-) -> i32;
+pub type CompareStrongFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        lhs: NonNullConst<Version>,
+        rhs: NonNullConst<Version>,
+    ) -> i32,
+>;
 
-pub type IsCompatibleFn = unsafe extern "C" fn(
-    base_module: Option<NonNull<CBase>>,
-    lhs: NonNullConst<Version>,
-    rhs: NonNullConst<Version>,
-) -> Bool;
+pub type IsCompatibleFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        base_module: Option<NonNull<CBase>>,
+        lhs: NonNullConst<Version>,
+        rhs: NonNullConst<Version>,
+    ) -> Bool,
+>;
 
 /// Helper trait for using the version api.
 pub trait VersionBinding {

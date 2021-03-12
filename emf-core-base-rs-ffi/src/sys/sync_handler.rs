@@ -1,7 +1,7 @@
 //! Interface of a sync handler
 //!
 //! Any object that can be wrapped into a [SyncHandlerInterface] can be used as a sync handler.
-use crate::Bool;
+use crate::{Bool, TypeWrapper};
 use std::ptr::NonNull;
 
 /// Opaque structure representing a sync handler.
@@ -10,9 +10,10 @@ pub struct SyncHandler {
     _dummy: [u8; 0],
 }
 
-pub type LockFn = unsafe extern "C" fn(handler: Option<NonNull<SyncHandler>>);
-pub type TryLockFn = unsafe extern "C" fn(handler: Option<NonNull<SyncHandler>>) -> Bool;
-pub type UnlockFn = unsafe extern "C" fn(handler: Option<NonNull<SyncHandler>>);
+pub type LockFn = TypeWrapper<unsafe extern "C-unwind" fn(handler: Option<NonNull<SyncHandler>>)>;
+pub type TryLockFn =
+    TypeWrapper<unsafe extern "C-unwind" fn(handler: Option<NonNull<SyncHandler>>) -> Bool>;
+pub type UnlockFn = TypeWrapper<unsafe extern "C-unwind" fn(handler: Option<NonNull<SyncHandler>>)>;
 
 /// Interface of a sync handler.
 #[repr(C)]
