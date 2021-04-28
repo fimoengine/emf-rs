@@ -3,7 +3,7 @@
 //! Any object that can be wrapped into a [ModuleLoaderInterface] can be used as a library loader.
 use crate::collections::{ConstSpan, NonNullConst, Result};
 use crate::library::OSPathChar;
-use crate::module::native_module::NativeModule;
+use crate::module::native_module::{NativeModule, NativeModuleInterface};
 use crate::module::{
     Error, Interface, InterfaceDescriptor, InternalHandle, ModuleInfo, ModuleStatus,
 };
@@ -501,12 +501,20 @@ pub type GetNativeModuleFn = TypeWrapper<
     ) -> Result<Option<NonNull<NativeModule>>, Error>,
 >;
 
+pub type GetNativeModuleInterfaceFn = TypeWrapper<
+    unsafe extern "C-unwind" fn(
+        loader: Option<NonNull<ModuleLoader>>,
+        handle: InternalHandle,
+    ) -> Result<NonNullConst<NativeModuleInterface>, Error>,
+>;
+
 /// Interface of a native module loader.
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct NativeModuleLoaderInterface {
     pub loader: NonNullConst<ModuleLoaderInterface>,
     pub get_native_module_fn: GetNativeModuleFn,
+    pub get_native_module_interface_fn: GetNativeModuleInterfaceFn,
 }
 
 unsafe impl Send for NativeModuleLoaderInterface {}
@@ -533,6 +541,26 @@ pub trait NativeModuleLoaderBinding: ModuleLoaderBinding {
         &self,
         handle: InternalHandle,
     ) -> Result<Option<NonNull<NativeModule>>, Error>;
+
+    /// Fetches the interface of a native module handle.
+    ///
+    /// # Failure
+    ///
+    /// The function fails if `handle` is invalid.
+    ///
+    /// # Return
+    ///
+    /// Native module interface.
+    ///
+    /// # Safety
+    ///
+    /// The function crosses the ffi boundary.
+    /// Direct usage of a [ModuleLoaderBinding] may break some invariants
+    /// of the module api, if not handled with care.
+    unsafe fn get_native_module_interface(
+        &self,
+        handle: InternalHandle,
+    ) -> Result<NonNullConst<NativeModuleInterface>, Error>;
 }
 
 impl ModuleLoaderBinding for NativeModuleLoaderInterface {
@@ -636,5 +664,13 @@ impl NativeModuleLoaderBinding for NativeModuleLoaderInterface {
         handle: InternalHandle,
     ) -> Result<Option<NonNull<NativeModule>>, Error> {
         (self.get_native_module_fn)(self.loader.as_ref().loader, handle)
+    }
+
+    #[inline]
+    unsafe fn get_native_module_interface(
+        &self,
+        handle: InternalHandle,
+    ) -> Result<NonNullConst<NativeModuleInterface>, Error> {
+        (self.get_native_module_interface_fn)(self.loader.as_ref().loader, handle)
     }
 }

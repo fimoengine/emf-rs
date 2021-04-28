@@ -12,6 +12,7 @@ use crate::ownership::{
 };
 use crate::CBaseInterfaceInfo;
 use std::marker::PhantomData;
+use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 
 /// An instance from a native module.
@@ -75,6 +76,54 @@ pub struct NativeModule<'a, O> {
 
 unsafe impl<O> Send for NativeModule<'_, O> {}
 unsafe impl<O> Sync for NativeModule<'_, O> {}
+
+impl<O> Deref for NativeModule<'_, O> {
+    type Target = NonNullConst<NativeModuleInterfaceFFI>;
+
+    fn deref(&self) -> &Self::Target {
+        &self._interface
+    }
+}
+
+impl<O> DerefMut for NativeModule<'_, O> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self._interface
+    }
+}
+
+impl<O> NativeModule<'_, O>
+where
+    O: AccessIdentifier,
+{
+    /// Construct a new instance from an interface.
+    ///
+    /// # Safety
+    ///
+    /// This function allows the creation of invalid modules
+    /// by bypassing lifetimes.
+    #[inline]
+    pub const unsafe fn new(interface: NonNullConst<NativeModuleInterfaceFFI>) -> Self {
+        Self {
+            _interface: interface,
+            _phantom: PhantomData,
+            _ownership: PhantomData,
+        }
+    }
+}
+
+impl NativeModule<'_, Owned> {
+    /// Borrows the module interface.
+    #[inline]
+    pub const fn as_borrowed(&self) -> NativeModule<'_, BorrowImmutable<'_>> {
+        unsafe { NativeModule::<'_, BorrowImmutable<'_>>::new(self._interface) }
+    }
+
+    /// Borrows the module interface mutably.
+    #[inline]
+    pub fn as_borrowed_mut(&mut self) -> NativeModule<'_, BorrowMutable<'_>> {
+        unsafe { NativeModule::<'_, BorrowMutable<'_>>::new(self._interface) }
+    }
+}
 
 impl<'a, O> NativeModule<'a, O>
 where

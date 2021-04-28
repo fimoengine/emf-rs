@@ -5,7 +5,7 @@ use crate::ffi::module::module_loader::{
     ModuleLoaderBinding, ModuleLoaderInterface, NativeModuleLoaderBinding,
     NativeModuleLoaderInterface,
 };
-use crate::module::native_module::NativeModuleInstance;
+use crate::module::native_module::{NativeModule, NativeModuleInstance};
 use crate::module::{
     Error, Interface, InterfaceDescriptor, InternalModule, ModuleInfo, ModuleStatus,
 };
@@ -1406,7 +1406,7 @@ impl<'a> NativeLoaderInternal<'a> {
     ///
     /// # Failure
     ///
-    /// The function fails if `handle` is invalid.
+    /// The function fails if `module` is invalid.
     ///
     /// # Return
     ///
@@ -1433,5 +1433,35 @@ impl<'a> NativeLoaderInternal<'a> {
                 |e| Err(Error::FFIError(e)),
                 |v| Ok(NativeModuleInstance::new(v)),
             )
+    }
+
+    /// Fetches the native module interface.
+    ///
+    /// # Failure
+    ///
+    /// The function fails if `module` is invalid.
+    ///
+    /// # Return
+    ///
+    /// Native module interface.
+    ///
+    /// # Safety
+    ///
+    /// The function crosses the ffi boundary.
+    /// Direct usage of a [NativeLoaderInternal] may break some invariants
+    /// of the module api, if not handled with care.
+    #[inline]
+    pub unsafe fn get_native_module_interface<'module, O>(
+        &self,
+        module: &'module InternalModule<O>,
+    ) -> Result<NativeModule<'module, O>, Error>
+    where
+        O: ImmutableAccessIdentifier,
+    {
+        self._interface
+            .as_ref()
+            .get_native_module_interface(module.as_handle())
+            .to_result()
+            .map_or_else(|e| Err(Error::FFIError(e)), |v| Ok(NativeModule::new(v)))
     }
 }
