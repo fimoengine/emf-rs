@@ -1,6 +1,6 @@
 [package]
 name = "emf-core-base-rs"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Gabriel Borrelli <gabriel.borrelli@nanoshellsoft.com>"]
 edition = "2018"
 description = "Idiomatic Rust wrapper of the emf-core-base interface"
