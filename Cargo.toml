@@ -2,5 +2,5 @@
 
 members = [
     "emf-core-base-rs",
-    "emf-core-base-rs-ffi",
+    "ffi/emf-core-base-rs-ffi",
 ]

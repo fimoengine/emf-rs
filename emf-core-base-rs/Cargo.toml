@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Gabriel Borrelli <gabriel.borrelli@nanoshellsoft.com>"]
 edition = "2018"
 description = "Idiomatic Rust wrapper of the emf-core-base interface"
+repository = "https://github.com/fimoengine/emf-rs"
 license = "MIT OR Apache-2.0"
 categories = ["game-development"]
 
@@ -19,4 +20,4 @@ extensions_all = ["unwind_internal", "emf-core-base-rs-ffi/extensions_all"]
 
 [dependencies]
 backtrace = "0.3.56"
-emf-core-base-rs-ffi = { version = "0.1.0", path = "../emf-core-base-rs-ffi" }
+emf-core-base-rs-ffi = { version = "0.1.0", path = "../ffi/emf-core-base-rs-ffi" }
