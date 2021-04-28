@@ -5,7 +5,7 @@ use crate::ffi::module::native_module::{
     NativeModuleInterface as NativeModuleInterfaceFFI,
 };
 use crate::ffi::CBaseBinding;
-use crate::module::{Error, Interface, InterfaceDescriptor, ModuleInfo};
+use crate::module::{Error, Interface, InterfaceDescriptor, Module, ModuleInfo};
 use crate::ownership::{
     AccessIdentifier, BorrowImmutable, BorrowMutable, ImmutableAccessIdentifier,
     MutableAccessIdentifier, Owned,
@@ -145,10 +145,14 @@ where
     /// Direct usage of a [NativeModule] may break some invariants
     /// of the module api, if not handled with care.
     #[inline]
-    pub unsafe fn load(
+    pub unsafe fn load<MO>(
         &mut self,
+        module: &Module<'_, MO>,
         interface: &impl CBaseInterfaceInfo,
-    ) -> Result<NativeModuleInstance<'a, Owned>, Error> {
+    ) -> Result<NativeModuleInstance<'a, Owned>, Error>
+    where
+        MO: AccessIdentifier,
+    {
         let internal = interface.internal_interface();
         let interface_handle = internal.base_module();
         let has_fn_fn = internal.fetch_has_function_fn();
@@ -157,7 +161,7 @@ where
         self._interface
             .into_mut()
             .as_mut()
-            .load(interface_handle, has_fn_fn, get_fn_fn)
+            .load(module.as_handle(), interface_handle, has_fn_fn, get_fn_fn)
             .map_or_else(
                 |e| Err(Error::FFIError(e)),
                 |v| Ok(NativeModuleInstance::new(v)),

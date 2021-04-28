@@ -2,7 +2,7 @@
 //!
 //! A native module is any library that exposes a symbol of the type [NativeModuleInterface].
 use crate::collections::{ConstSpan, NonNullConst, Result};
-use crate::module::{Error, Interface, InterfaceDescriptor, ModuleInfo};
+use crate::module::{Error, Interface, InterfaceDescriptor, ModuleHandle, ModuleInfo};
 use crate::sys::api::{GetFunctionFn, HasFunctionFn};
 use crate::{CBase, TypeWrapper};
 use std::ptr::NonNull;
@@ -15,6 +15,7 @@ pub struct NativeModule {
 
 pub type LoadFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
+        handle: ModuleHandle,
         base_module: Option<NonNull<CBase>>,
         has_function_fn: HasFunctionFn,
         get_function_fn: GetFunctionFn,
@@ -98,6 +99,7 @@ pub trait NativeModuleBinding {
     /// of the module api, if not handled with care.
     unsafe fn load(
         &mut self,
+        handle: ModuleHandle,
         base_module: Option<NonNull<CBase>>,
         has_function_fn: HasFunctionFn,
         get_function_fn: GetFunctionFn,
@@ -253,11 +255,12 @@ impl NativeModuleBinding for NativeModuleInterface {
     #[inline]
     unsafe fn load(
         &mut self,
+        handle: ModuleHandle,
         base_module: Option<NonNull<CBase>>,
         has_function_fn: HasFunctionFn,
         get_function_fn: GetFunctionFn,
     ) -> Result<Option<NonNull<NativeModule>>, Error> {
-        (self.load_fn)(base_module, has_function_fn, get_function_fn)
+        (self.load_fn)(handle, base_module, has_function_fn, get_function_fn)
     }
 
     #[inline]
