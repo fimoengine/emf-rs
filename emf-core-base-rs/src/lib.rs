@@ -2,8 +2,8 @@
 //!
 //! This crate provides the function and type definitions of the
 //! [emf-core-base](https://github.com/fimoengine/emf/tree/main/emf_core_base) interface.
+#![feature(const_fn_trait_bound)]
 #![feature(c_unwind)]
-#![feature(const_fn)]
 #![warn(
     missing_docs,
     rust_2018_idioms,
