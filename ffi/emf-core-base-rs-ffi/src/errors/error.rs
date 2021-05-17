@@ -240,8 +240,8 @@ mod box_error {
                 .as_ref()
                 .source()
                 .as_ref()
-                .map_or(Optional::none(), |error| {
-                    Optional::some(ErrorRef::from(error.as_ref()))
+                .map_or(Optional::None, |error| {
+                    Optional::Some(ErrorRef::from(error.as_ref()))
                 })
         }
 
@@ -329,8 +329,8 @@ mod box_error {
                 .as_ref()
                 .source()
                 .as_ref()
-                .map_or(Optional::none(), |error| {
-                    Optional::some(ErrorRef::from(error.as_ref()))
+                .map_or(Optional::None, |error| {
+                    Optional::Some(ErrorRef::from(error.as_ref()))
                 })
         }
 
@@ -430,6 +430,6 @@ mod tests {
         assert_eq!(format!("{}", &my_error.internal), source_dis);
         assert_eq!(format!("{:?}", &my_error.internal), source_dbg);
 
-        assert_eq!(unsafe { source.source() }, Optional::none())
+        assert_eq!(unsafe { source.source() }, Optional::None)
     }
 }

@@ -1,383 +1,298 @@
-use crate::Bool;
-use std::cmp::Ordering;
-use std::cmp::Ordering::{Greater, Less};
-use std::fmt::{Debug, Formatter};
+use crate::collections::Optional;
+use std::fmt::Debug;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-union ResultImpl<T, E>
-where
-    T: Copy + Sized,
-    E: Copy + Sized,
-{
-    result: T,
-    error: E,
+/// A type that represents either success ([`Result::Ok`]) or failure ([`Result::Err`]).
+#[repr(C, i8)]
+#[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[must_use = "this `Result` may be an `Err` variant, which should be handled"]
+pub enum Result<T, E> {
+    Ok(T),
+    Err(E),
 }
 
-/// A type that represents either a result or an error.
-#[repr(C)]
-#[must_use]
-#[derive(Copy, Clone)]
-pub struct Result<T, E>
-where
-    T: Copy + Sized,
-    E: Copy + Sized,
-{
-    data: ResultImpl<T, E>,
-    has_error: Bool,
-}
-
-impl<T, E> Result<T, E>
-where
-    T: Copy + Sized,
-    E: Copy + Sized,
-{
-    /// Creates a new result containing a value.
-    pub fn new_ok(value: T) -> Self {
-        Self {
-            data: ResultImpl { result: value },
-            has_error: Bool::False,
-        }
+impl<T, E> Result<T, E> {
+    /// Returns `true` if the result contains success.
+    #[inline]
+    pub const fn is_ok(&self) -> bool {
+        matches!(*self, Result::Ok(_))
     }
 
-    /// Creates a new result containing an error.
-    pub fn new_err(err: E) -> Self {
-        Self {
-            data: ResultImpl { error: err },
-            has_error: Bool::True,
-        }
-    }
-
-    /// Returns `true` if the result contains a value.
-    pub fn is_ok(&self) -> bool {
-        self.has_error == Bool::False
-    }
-
-    /// Returns `true` if the result contains an error.
-    pub fn is_err(&self) -> bool {
-        self.has_error == Bool::True
+    /// Returns `true` if the result contains failure.
+    #[inline]
+    pub const fn is_err(&self) -> bool {
+        !self.is_ok()
     }
 
     /// Converts from `Result<T, E>` to `Option<T>` discarding any error.
-    pub fn ok(self) -> Option<T> {
-        match self.has_error {
-            Bool::False => Some(unsafe { self.data.result }),
-            Bool::True => None,
+    #[inline]
+    pub fn ok(self) -> Optional<T> {
+        match self {
+            Result::Ok(val) => Optional::Some(val),
+            Result::Err(_) => Optional::None,
         }
     }
 
     /// Converts from `Result<T, E>` to `Option<E>` discarding any value.
-    pub fn err(self) -> Option<E> {
-        match self.has_error {
-            Bool::False => None,
-            Bool::True => Some(unsafe { self.data.error }),
+    #[inline]
+    pub fn err(self) -> Optional<E> {
+        match self {
+            Result::Ok(_) => Optional::None,
+            Result::Err(val) => Optional::Some(val),
         }
     }
 
     /// Converts from `&Result<T, E>` to `Result<&T, &E>`.
-    pub fn as_ref(&self) -> Result<&T, &E> {
-        match self.is_ok() {
-            true => Result::new_ok(unsafe { &self.data.result }),
-            false => Result::new_err(unsafe { &self.data.error }),
+    #[inline]
+    pub const fn as_ref(&self) -> Result<&T, &E> {
+        match *self {
+            Result::Ok(ref x) => Result::Ok(x),
+            Result::Err(ref x) => Result::Err(x),
+        }
+    }
+
+    /// Converts from `&Result<T, E>` to `Result<&mut T, &mut E>`.
+    #[inline]
+    pub fn as_mut(&mut self) -> Result<&mut T, &mut E> {
+        match *self {
+            Result::Ok(ref mut x) => Result::Ok(x),
+            Result::Err(ref mut x) => Result::Err(x),
         }
     }
 
     /// Maps the `Result<T, E>` to `Result<U, E>` by mapping the ok value.
+    #[inline]
     pub fn map<U, F>(self, op: F) -> Result<U, E>
     where
-        U: Copy + Sized,
         F: FnOnce(T) -> U,
     {
-        match self.is_ok() {
-            true => Result::new_ok(op(unsafe { self.data.result })),
-            false => Result::new_err(unsafe { self.data.error }),
+        match self {
+            Result::Ok(x) => Result::Ok(op(x)),
+            Result::Err(x) => Result::Err(x),
         }
     }
 
     /// Maps the ok value of the result by applying f or returning the default value.
+    #[inline]
     pub fn map_or<U, F>(self, default: U, f: F) -> U
     where
         F: FnOnce(T) -> U,
     {
-        match self.is_ok() {
-            true => f(unsafe { self.data.result }),
-            false => default,
+        match self {
+            Result::Ok(x) => f(x),
+            Result::Err(_) => default,
         }
     }
 
     /// Maps the `Result<T, E>` to `U` by either applying f to the ok value or
     /// applying default to the error value.
+    #[inline]
     pub fn map_or_else<U, D, F>(self, default: D, f: F) -> U
     where
         D: FnOnce(E) -> U,
         F: FnOnce(T) -> U,
     {
-        match self.is_ok() {
-            true => f(unsafe { self.data.result }),
-            false => default(unsafe { self.data.error }),
+        match self {
+            Result::Ok(x) => f(x),
+            Result::Err(x) => default(x),
         }
     }
 
     /// Maps the `Result<T, E>` to `Result<T,F>` by mapping the error value.
+    #[inline]
     pub fn map_err<F, O>(self, op: O) -> Result<T, F>
     where
-        F: Copy + Sized,
         O: FnOnce(E) -> F,
     {
-        match self.is_ok() {
-            true => Result::new_ok(unsafe { self.data.result }),
-            false => Result::new_err(op(unsafe { self.data.error })),
+        match self {
+            Result::Ok(x) => Result::Ok(x),
+            Result::Err(x) => Result::Err(op(x)),
         }
     }
 
     /// Returns the contained ok value or a provided default.
+    #[inline]
     pub fn unwrap_or(self, default: T) -> T {
-        match self.is_ok() {
-            true => unsafe { self.data.result },
-            false => default,
+        match self {
+            Result::Ok(x) => x,
+            Result::Err(_) => default,
         }
     }
 
     /// Returns the contained ok value or computes it from a closure.
+    #[inline]
     pub fn unwrap_or_else<F>(self, op: F) -> T
     where
         F: FnOnce(E) -> T,
     {
-        match self.is_ok() {
-            true => unsafe { self.data.result },
-            false => op(unsafe { self.data.error }),
+        match self {
+            Result::Ok(x) => x,
+            Result::Err(x) => op(x),
         }
     }
 
-    /// Maps a `Result<T, E>` to `std::result::Result<T, E>`.
-    pub fn to_result(self) -> std::result::Result<T, E> {
-        match self.is_ok() {
-            true => Ok(unsafe { self.data.result }),
-            false => Err(unsafe { self.data.error }),
+    /// Maps the `Result<T, E>` to the native `Result<T, E>`.
+    #[inline]
+    pub fn into_rust(self) -> std::result::Result<T, E> {
+        match self {
+            Result::Ok(x) => Ok(x),
+            Result::Err(x) => Err(x),
         }
     }
 }
 
 impl<T, E> Result<T, E>
 where
-    T: Copy + Sized,
-    E: Copy + Sized + Debug,
+    E: Debug,
 {
-    /// Returns the contained ok value.
-    ///
-    /// # Panics
-    ///
-    /// Panics if no ok value is contained, with a panic message provided by the error value.
-    pub fn expect(self, msg: &str) -> T {
-        match self.is_ok() {
-            true => unsafe { self.data.result },
-            false => panic!("{}: {:?}", msg, unsafe { self.data.error }),
-        }
-    }
-
     /// Returns the contained ok value.
     ///
     /// # Panics
     ///
     /// Panics if no ok value is contained, with a panic message including the passed message,
     /// and the content of the error value.
+    #[inline]
+    pub fn expect(self, msg: &str) -> T {
+        match self {
+            Result::Ok(x) => x,
+            Result::Err(x) => panic!("{}: {:?}", msg, x),
+        }
+    }
+
+    /// Returns the contained ok value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no ok value is contained, with a panic message provided by the error value.
+    #[inline]
     pub fn unwrap(self) -> T {
-        match self.is_ok() {
-            true => unsafe { self.data.result },
-            false => panic!("{:?}", unsafe { self.data.error }),
+        match self {
+            Result::Ok(x) => x,
+            Result::Err(x) => panic!("{:?}", x),
         }
     }
 }
 
 impl<T, E> Result<T, E>
 where
-    T: Copy + Sized + Debug,
-    E: Copy + Sized,
+    T: Debug,
 {
-    /// Returns the contained error value.
-    ///
-    /// # Panics
-    ///
-    /// Panics if no error value is contained, with a panic message provided by the ok value.
-    pub fn expect_err(self, msg: &str) -> E {
-        match self.is_ok() {
-            true => panic!("{}: {:?}", msg, unsafe { self.data.result }),
-            false => unsafe { self.data.error },
-        }
-    }
-
     /// Returns the contained error value.
     ///
     /// # Panics
     ///
     /// Panics if no error value is contained, with a panic message including the passed message,
     /// and the content of the ok value.
+    #[inline]
+    pub fn expect_err(self, msg: &str) -> E {
+        match self {
+            Result::Ok(x) => panic!("{}: {:?}", msg, x),
+            Result::Err(x) => x,
+        }
+    }
+
+    /// Returns the contained error value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no error value is contained, with a panic message provided by the ok value.
+    #[inline]
     pub fn unwrap_err(self) -> E {
-        match self.is_ok() {
-            true => panic!("{:?}", unsafe { self.data.result }),
-            false => unsafe { self.data.error },
+        match self {
+            Result::Ok(x) => panic!("{:?}", x),
+            Result::Err(x) => x,
         }
     }
 }
 
-impl<T, E> Result<T, E>
+impl<T, E> Clone for Result<T, E>
 where
-    T: Copy + Sized + Default,
-    E: Copy + Sized,
+    T: Clone,
+    E: Clone,
 {
-    /// Returns the contained ok value or a default.
-    pub fn unwrap_or_default(self) -> T {
-        match self.is_ok() {
-            true => unsafe { self.data.result },
-            false => Default::default(),
+    #[inline]
+    fn clone(&self) -> Self {
+        match self {
+            Result::Ok(x) => Result::Ok(x.clone()),
+            Result::Err(x) => Result::Err(x.clone()),
         }
     }
 }
 
-impl<T, E> Debug for Result<T, E>
-where
-    T: Copy + Sized + Debug,
-    E: Copy + Sized + Debug,
-{
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self.is_ok() {
-            true => write!(f, "Result({:?})", unsafe { self.data.result }),
-            false => write!(f, "Error({:?})", unsafe { self.data.error }),
+impl<T, E> From<std::result::Result<T, E>> for Result<T, E> {
+    #[inline]
+    fn from(val: std::result::Result<T, E>) -> Self {
+        match val {
+            Ok(x) => Result::Ok(x),
+            Err(x) => Result::Err(x),
         }
     }
 }
 
-impl<T, E> PartialEq for Result<T, E>
-where
-    T: Copy + Sized + PartialEq,
-    E: Copy + Sized + PartialEq,
-{
-    fn eq(&self, other: &Self) -> bool {
-        if self.is_ok() != other.is_ok() {
-            return false;
-        }
-
-        match self.is_ok() {
-            true => unsafe { self.data.result == other.data.result },
-            false => unsafe { self.data.error == other.data.error },
-        }
-    }
-}
-
-impl<T, E> Eq for Result<T, E>
-where
-    T: Copy + Sized + PartialEq + Eq,
-    E: Copy + Sized + PartialEq + Eq,
-{
-}
-
-impl<T, E> PartialOrd for Result<T, E>
-where
-    T: Copy + Sized + PartialOrd,
-    E: Copy + Sized + PartialOrd,
-{
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        if self.is_ok() != other.is_ok() {
-            return match self.is_ok() {
-                true => Some(Greater),
-                false => Some(Less),
-            };
-        }
-
-        match self.is_ok() {
-            true => unsafe { self.data.result.partial_cmp(&other.data.result) },
-            false => unsafe { self.data.error.partial_cmp(&other.data.error) },
-        }
-    }
-}
-
-impl<T, E> Ord for Result<T, E>
-where
-    T: Copy + Sized + PartialOrd + Ord,
-    E: Copy + Sized + PartialOrd + Ord,
-{
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(&other).unwrap()
-    }
-}
-
-impl<T, E> From<std::result::Result<T, E>> for Result<T, E>
-where
-    T: Copy + Sized,
-    E: Copy + Sized,
-{
-    fn from(res: std::result::Result<T, E>) -> Self {
-        res.map_or_else(Self::new_err, Self::new_ok)
-    }
-}
-
-impl<T, E> From<Result<T, E>> for std::result::Result<T, E>
-where
-    T: Copy + Sized,
-    E: Copy + Sized,
-{
-    fn from(res: Result<T, E>) -> Self {
-        res.to_result()
+impl<T, E> From<Result<T, E>> for std::result::Result<T, E> {
+    #[inline]
+    fn from(val: Result<T, E>) -> Self {
+        val.into_rust()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Result;
+    use crate::collections::Optional;
 
     #[test]
     fn new_ok_test() {
-        let val: Result<i32, i32> = Result::new_ok(15);
+        let val: Result<i32, i32> = Result::Ok(15);
         assert!(val.is_ok());
         assert_eq!(val.unwrap(), 15);
     }
 
     #[test]
     fn new_err_test() {
-        let val: Result<bool, i32> = Result::new_err(15);
+        let val: Result<bool, i32> = Result::Err(15);
         assert!(val.is_err());
-        assert_eq!(val.err(), Some(15));
+        assert_eq!(val.err(), Optional::Some(15));
     }
 
     #[test]
     fn is_ok_test() {
-        let val: Result<i32, i32> = Result::new_ok(15);
+        let val: Result<i32, i32> = Result::Ok(15);
         assert!(val.is_ok());
     }
 
     #[test]
     fn is_err_test() {
-        let val: Result<bool, i32> = Result::new_err(15);
+        let val: Result<bool, i32> = Result::Err(15);
         assert!(val.is_err());
     }
 
     #[test]
     fn as_ref_test() {
-        let val: Result<i32, bool> = Result::new_ok(15);
+        let val: Result<i32, bool> = Result::Ok(15);
         let val_ref = val.as_ref();
-        assert_eq!(val_ref.ok(), Some(&15));
-        let val: Result<i32, bool> = Result::new_err(false);
+        assert_eq!(val_ref.ok(), Optional::Some(&15));
+        let val: Result<i32, bool> = Result::Err(false);
         let val_ref = val.as_ref();
-        assert_eq!(val_ref.err(), Some(&false));
+        assert_eq!(val_ref.err(), Optional::Some(&false));
     }
 
     #[test]
     fn map_test() {
-        let ok_val: Result<i32, bool> = Result::new_ok(0);
-        let err_val: Result<i32, bool> = Result::new_err(false);
+        let ok_val: Result<i32, bool> = Result::Ok(0);
+        let err_val: Result<i32, bool> = Result::Err(false);
         let map_func = |i: i32| i + 1;
 
         let ok_map = ok_val.map(map_func);
         let err_map = err_val.map(map_func);
 
-        assert_eq!(ok_map.ok(), Some(1));
-        assert_eq!(err_map.err(), Some(false));
+        assert_eq!(ok_map.ok(), Optional::Some(1));
+        assert_eq!(err_map.err(), Optional::Some(false));
     }
 
     #[test]
     fn map_or_test() {
-        let ok_val: Result<i32, bool> = Result::new_ok(0);
-        let err_val: Result<i32, bool> = Result::new_err(false);
+        let ok_val: Result<i32, bool> = Result::Ok(0);
+        let err_val: Result<i32, bool> = Result::Err(false);
         let map_func = |i: i32| i + 1;
 
         let ok_map = ok_val.map_or(10, map_func);
@@ -389,8 +304,8 @@ mod tests {
 
     #[test]
     fn map_or_else_test() {
-        let ok_val: Result<i32, bool> = Result::new_ok(0);
-        let err_val: Result<i32, bool> = Result::new_err(false);
+        let ok_val: Result<i32, bool> = Result::Ok(0);
+        let err_val: Result<i32, bool> = Result::Err(false);
         let map_ok_func = |i: i32| i > 0;
         let map_err_func = |i: bool| !i;
 
