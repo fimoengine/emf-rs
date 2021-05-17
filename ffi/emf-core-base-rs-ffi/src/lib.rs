@@ -20,6 +20,7 @@ mod init;
 pub mod extensions;
 
 pub mod collections;
+pub mod errors;
 pub mod library;
 pub mod module;
 pub mod sys;

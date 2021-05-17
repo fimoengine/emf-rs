@@ -107,7 +107,7 @@ where
     fn as_ref(&self) -> &[T] {
         unsafe {
             if self.data.is_null() {
-                std::slice::from_raw_parts(NonNull::dangling().as_ptr(), self.length)
+                std::slice::from_raw_parts(NonNull::dangling().as_ptr(), 0)
             } else {
                 std::slice::from_raw_parts(self.data, self.length)
             }
@@ -123,7 +123,7 @@ where
     fn as_mut(&mut self) -> &mut [T] {
         unsafe {
             if self.data.is_null() {
-                std::slice::from_raw_parts_mut(NonNull::dangling().as_ptr(), self.length)
+                std::slice::from_raw_parts_mut(NonNull::dangling().as_ptr(), 0)
             } else {
                 std::slice::from_raw_parts_mut(self.data as *mut T, self.length)
             }
