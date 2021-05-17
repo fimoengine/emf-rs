@@ -2,7 +2,8 @@
 //!
 //! Any object that can be wrapped into a [LibraryLoaderInterface] can be used as a library loader.
 use crate::collections::{NonNullConst, Result};
-use crate::library::{Error, InternalHandle, OSPathChar, Symbol};
+use crate::errors::Error;
+use crate::library::{InternalHandle, OSPathChar, Symbol};
 use crate::{CBaseFn, TypeWrapper};
 use std::ffi::c_void;
 #[cfg(windows)]

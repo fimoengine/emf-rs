@@ -9,7 +9,7 @@
 //! use emf_core_base_rs_ffi::version::api::VersionBinding;
 //! use emf_core_base_rs_ffi::module::api::ModuleBinding;
 //! use emf_core_base_rs_ffi::library::OSPathChar;
-//! use emf_core_base_rs_ffi::collections::{NonNullConst, ConstSpan};
+//! use emf_core_base_rs_ffi::collections::{NonNullConst, ConstSpan, Optional};
 //! use emf_core_base_rs_ffi::module::{MODULE_LOADER_DEFAULT_HANDLE,
 //!     InterfaceDescriptor, InterfaceName};
 //!
@@ -26,25 +26,25 @@
 //!                     NonNullConst::from(&mod_path)
 //!                     ).into_rust() {
 //!         Ok(handle) => handle,
-//!         Err(_) => {
+//!         Err(e) => {
 //!             SysBinding::panic(
 //!                 base_interface,
-//!                 Some(NonNullConst::from(b"Unable to add the module.\0"))
+//!                 Optional::Some(e)
 //!             );
 //!         }
 //!     };
 //!
-//!     if ModuleBinding::load(base_interface, handle).is_err() {
+//!     if let Err(e) = ModuleBinding::load(base_interface, handle).into_rust() {
 //!         SysBinding::panic(
 //!             base_interface,
-//!             Some(NonNullConst::from(b"Unable to load the module.\0"))
+//!             Optional::Some(e)
 //!         );
 //!     }
 //!
-//!     if ModuleBinding::initialize(base_interface, handle).is_err() {
+//!     if let Err(e) = ModuleBinding::initialize(base_interface, handle).into_rust() {
 //!         SysBinding::panic(
 //!             base_interface,
-//!             Some(NonNullConst::from(b"Unable to initialize the module.\0"))
+//!             Optional::Some(e)
 //!         );
 //!     }
 //!
@@ -54,14 +54,14 @@
 //!         extensions: ConstSpan::new()
 //!     };
 //!
-//!     if ModuleBinding::export_interface(
+//!     if let Err(e) = ModuleBinding::export_interface(
 //!         base_interface,
 //!         handle,
 //!         NonNullConst::from(&interface_desc)
-//!     ).is_err() {
+//!     ).into_rust() {
 //!         SysBinding::panic(
 //!             base_interface,
-//!             Some(NonNullConst::from(b"Unable to export the interface.\0"))
+//!             Optional::Some(e)
 //!         );
 //!     }
 //!
@@ -109,25 +109,6 @@ pub const MODULE_LOADER_DEFAULT_HANDLE: LoaderHandle = LoaderHandle {
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum PredefinedHandles {
     Native = 0,
-}
-
-/// Module api errors.
-#[repr(i32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub enum Error {
-    PathInvalid = 0,
-    ModuleStateInvalid = 1,
-    ModuleHandleInvalid = 2,
-    LoaderHandleInvalid = 3,
-    InternalHandleInvalid = 4,
-    ModuleTypeInvalid = 5,
-    ModuleTypeNotFound = 6,
-    DuplicateModuleType = 7,
-    InterfaceNotFound = 8,
-    DuplicateInterface = 9,
-    ModuleDependencyNotFound = 10,
-    BufferOverflow = 11,
 }
 
 /// Status of a module.

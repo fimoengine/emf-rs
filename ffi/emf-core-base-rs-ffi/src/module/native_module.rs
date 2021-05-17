@@ -2,7 +2,8 @@
 //!
 //! A native module is any library that exposes a symbol of the type [NativeModuleInterface].
 use crate::collections::{ConstSpan, NonNullConst, Result};
-use crate::module::{Error, Interface, InterfaceDescriptor, ModuleHandle, ModuleInfo};
+use crate::errors::Error;
+use crate::module::{Interface, InterfaceDescriptor, ModuleHandle, ModuleInfo};
 use crate::sys::api::{GetFunctionFn, HasFunctionFn};
 use crate::{CBase, TypeWrapper};
 use std::ptr::NonNull;

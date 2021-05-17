@@ -2,6 +2,7 @@
 //!
 //! The sys api is exposed by the [SysBinding] trait.
 use crate::collections::{NonNullConst, Optional};
+use crate::errors::Error;
 use crate::sys::sync_handler::SyncHandlerInterface;
 use crate::{Bool, CBase, CBaseFn, CBaseInterface, FnId, TypeWrapper};
 use std::ptr::NonNull;
@@ -10,10 +11,7 @@ pub type ShutdownFn =
     TypeWrapper<unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>) -> !>;
 
 pub type PanicFn = TypeWrapper<
-    unsafe extern "C-unwind" fn(
-        base_module: Option<NonNull<CBase>>,
-        error: Option<NonNullConst<u8>>,
-    ) -> !,
+    unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>, error: Optional<Error>) -> !,
 >;
 
 pub type HasFunctionFn =
@@ -57,7 +55,7 @@ pub trait SysBinding {
     /// # Safety
     ///
     /// The function crosses the ffi boundary.
-    unsafe fn panic(&self, error: Option<NonNullConst<u8>>) -> !;
+    unsafe fn panic(&self, error: Optional<Error>) -> !;
 
     /// Checks if a function is implemented.
     ///
@@ -158,7 +156,7 @@ impl SysBinding for CBaseInterface {
     }
 
     #[inline]
-    unsafe fn panic(&self, error: Option<NonNullConst<u8>>) -> ! {
+    unsafe fn panic(&self, error: Optional<Error>) -> ! {
         (self.sys_panic_fn)(self.base_module, error)
     }
 

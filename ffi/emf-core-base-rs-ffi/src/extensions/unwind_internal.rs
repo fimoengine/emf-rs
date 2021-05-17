@@ -1,5 +1,6 @@
 //! The `unwind_internal` extension.
-use crate::collections::NonNullConst;
+use crate::collections::{NonNullConst, Optional};
+use crate::errors::Error;
 use crate::version::ReleaseType;
 use crate::{CBase, CBaseBinding, TypeWrapper};
 use std::ptr::NonNull;
@@ -36,11 +37,9 @@ pub struct Context {
 
 pub type ShutdownFn =
     TypeWrapper<unsafe extern "C-unwind" fn(context: Option<NonNull<Context>>) -> !>;
+
 pub type PanicFn = TypeWrapper<
-    unsafe extern "C-unwind" fn(
-        context: Option<NonNull<Context>>,
-        error: Option<NonNullConst<u8>>,
-    ) -> !,
+    unsafe extern "C-unwind" fn(context: Option<NonNull<Context>>, error: Optional<Error>) -> !,
 >;
 
 pub type SetContextFn = TypeWrapper<
