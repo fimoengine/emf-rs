@@ -1,11 +1,13 @@
 //! Implementation of the `NonNullConst<T>` type.
+use std::cmp::Ordering;
+use std::fmt::{Debug, Formatter};
+use std::hash::{Hash, Hasher};
 use std::ptr::NonNull;
 
 /// A type representing a `*const T` but non-zero.
 ///
 /// Uses [NonNull] internally, as such, the same restrictions apply.
 #[repr(transparent)]
-#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub struct NonNullConst<T>
 where
     T: ?Sized,
@@ -23,10 +25,7 @@ impl<T> NonNullConst<T> {
     }
 }
 
-impl<T> NonNullConst<T>
-where
-    T: ?Sized,
-{
+impl<T: ?Sized> NonNullConst<T> {
     /// Creates a new `NonNull`.
     ///
     /// # Safety
@@ -146,10 +145,46 @@ where
     }
 }
 
-impl<T> Copy for NonNullConst<T> {}
+impl<T: ?Sized> Debug for NonNullConst<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(&self.ptr, f)
+    }
+}
 
-impl<T> Clone for NonNullConst<T> {
+impl<T: ?Sized> Copy for NonNullConst<T> {}
+
+impl<T: ?Sized> Clone for NonNullConst<T> {
+    #[inline]
     fn clone(&self) -> Self {
         unsafe { Self::new_unchecked(self.as_ptr()) }
+    }
+}
+
+impl<T: ?Sized> PartialEq for NonNullConst<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.ptr.eq(&other.ptr)
+    }
+}
+
+impl<T: ?Sized> Eq for NonNullConst<T> {}
+
+impl<T: ?Sized> PartialOrd for NonNullConst<T> {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.ptr.partial_cmp(&other.ptr)
+    }
+}
+
+impl<T: ?Sized> Ord for NonNullConst<T> {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.ptr.cmp(&other.ptr)
+    }
+}
+
+impl<T: ?Sized> Hash for NonNullConst<T> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.ptr.hash(state)
     }
 }
