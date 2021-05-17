@@ -21,7 +21,7 @@
 //!             base_interface,
 //!             DEFAULT_HANDLE,
 //!             NonNullConst::from(lib_path)
-//!             ).to_result() {
+//!             ).into_rust() {
 //!         Ok(handle) => handle,
 //!         Err(_) => {
 //!             SysBinding::panic(
@@ -36,7 +36,7 @@
 //!             base_interface,
 //!             handle,
 //!             NonNullConst::from(b"add_fn\0")
-//!             ).to_result() {
+//!             ).into_rust() {
 //!         Ok(sym) => {
 //!             std::mem::transmute(sym.symbol)
 //!         },
@@ -49,7 +49,7 @@
 //!
 //!     assert_eq!(symbol(3, 5), 8);
 //!
-//!     match LibraryBinding::unload(base_interface, handle).to_result() {
+//!     match LibraryBinding::unload(base_interface, handle).into_rust() {
 //!         Ok(_) => {}
 //!         Err(_) => {
 //!             SysBinding::panic(base_interface,

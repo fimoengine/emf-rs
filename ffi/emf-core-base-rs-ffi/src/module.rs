@@ -24,7 +24,7 @@
 //!                     base_interface,
 //!                     MODULE_LOADER_DEFAULT_HANDLE,
 //!                     NonNullConst::from(&mod_path)
-//!                     ).to_result() {
+//!                     ).into_rust() {
 //!         Ok(handle) => handle,
 //!         Err(_) => {
 //!             SysBinding::panic(

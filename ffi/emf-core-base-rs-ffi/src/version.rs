@@ -17,7 +17,7 @@
 //!     let v2 = match VersionBinding::from_string(
 //!                     base_interface,
 //!                     NonNullConst::from(&v2_string)
-//!                     ).to_result() {
+//!                     ).into_rust() {
 //!         Ok(v) => v,
 //!         Err(_) => {
 //!             SysBinding::lock(base_interface);
