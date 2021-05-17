@@ -7,8 +7,8 @@
 //! # let base_interface: &mut dyn CBaseBinding = unsafe { std::mem::MaybeUninit::uninit().assume_init() };
 //! use emf_core_base_rs_ffi::sys::api::SysBinding;
 //! use emf_core_base_rs_ffi::library::api::LibraryBinding;
-//! use emf_core_base_rs_ffi::collections::NonNullConst;
-//! use emf_core_base_rs_ffi::library::{OSPathChar, DEFAULT_HANDLE, LibraryHandle, Error};
+//! use emf_core_base_rs_ffi::collections::{NonNullConst, Optional};
+//! use emf_core_base_rs_ffi::library::{OSPathChar, DEFAULT_HANDLE, LibraryHandle};
 //!
 //! unsafe {
 //!     // `base_interface` has the type `&mut dyn CBaseBinding`.
@@ -23,11 +23,8 @@
 //!             NonNullConst::from(lib_path)
 //!             ).into_rust() {
 //!         Ok(handle) => handle,
-//!         Err(_) => {
-//!             SysBinding::panic(
-//!                 base_interface,
-//!                 Some(NonNullConst::from(b"Unable to load the library.\0"))
-//!             );
+//!         Err(e) => {
+//!             SysBinding::panic(base_interface, Optional::Some(e));
 //!         }
 //!     };
 //!
@@ -39,11 +36,9 @@
 //!             ).into_rust() {
 //!         Ok(sym) => {
 //!             std::mem::transmute(sym.symbol)
-//!         },
-//!         Err(_) => {
-//!             SysBinding::panic(base_interface,
-//!                 Some(NonNullConst::from(b"Unable to find the symbol.\0"))
-//!             );
+//!         }
+//!         Err(e) => {
+//!             SysBinding::panic(base_interface, Optional::Some(e));
 //!         }
 //!     };
 //!
@@ -51,10 +46,8 @@
 //!
 //!     match LibraryBinding::unload(base_interface, handle).into_rust() {
 //!         Ok(_) => {}
-//!         Err(_) => {
-//!             SysBinding::panic(base_interface,
-//!                 Some(NonNullConst::from(b"Unable to unload the library.\0"))
-//!             );
+//!         Err(e) => {
+//!             SysBinding::panic(base_interface, Optional::Some(e));
 //!         }
 //!     }
 //!
@@ -83,22 +76,6 @@ pub const DEFAULT_HANDLE: LoaderHandle = LoaderHandle {
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum PredefinedHandles {
     Native = 0,
-}
-
-/// Library api errors.
-#[repr(i32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub enum Error {
-    PathNotFound = 0,
-    LibraryHandleInvalid = 1,
-    LoaderHandleInvalid = 2,
-    InternalHandleInvalid = 3,
-    LibraryTypeInvalid = 4,
-    LibraryTypeNotFound = 5,
-    DuplicatedLibraryType = 6,
-    SymbolNotFound = 7,
-    BufferOverflow = 8,
 }
 
 /// Character type of a windows path.

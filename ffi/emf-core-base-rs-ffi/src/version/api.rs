@@ -2,7 +2,8 @@
 //!
 //! The version api is exposed by the [VersionBinding] trait.
 use crate::collections::{ConstSpan, MutSpan, NonNullConst, Result};
-use crate::version::{Error, ReleaseType, Version};
+use crate::errors::Error;
+use crate::version::{ReleaseType, Version};
 use crate::{Bool, CBase, CBaseInterface, TypeWrapper};
 use std::ptr::NonNull;
 

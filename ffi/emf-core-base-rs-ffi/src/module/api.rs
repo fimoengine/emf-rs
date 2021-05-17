@@ -2,10 +2,11 @@
 //!
 //! The library api is exposed be the [ModuleBinding] trait.
 use crate::collections::{ConstSpan, MutSpan, NonNullConst, Result};
+use crate::errors::Error;
 use crate::library::OSPathChar;
 use crate::module::module_loader::ModuleLoaderInterface;
 use crate::module::{
-    Error, Interface, InterfaceDescriptor, InternalHandle, LoaderHandle, ModuleHandle, ModuleInfo,
+    Interface, InterfaceDescriptor, InternalHandle, LoaderHandle, ModuleHandle, ModuleInfo,
     ModuleStatus, ModuleType,
 };
 use crate::{Bool, CBase, CBaseInterface, TypeWrapper};

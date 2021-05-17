@@ -2,11 +2,10 @@
 //!
 //! Any object that can be wrapped into a [ModuleLoaderInterface] can be used as a library loader.
 use crate::collections::{ConstSpan, NonNullConst, Result};
+use crate::errors::Error;
 use crate::library::OSPathChar;
 use crate::module::native_module::{NativeModule, NativeModuleInterface};
-use crate::module::{
-    Error, Interface, InterfaceDescriptor, InternalHandle, ModuleInfo, ModuleStatus,
-};
+use crate::module::{Interface, InterfaceDescriptor, InternalHandle, ModuleInfo, ModuleStatus};
 use crate::TypeWrapper;
 use std::ffi::c_void;
 use std::ptr::NonNull;

@@ -2,9 +2,10 @@
 //!
 //! The library api is exposed be the [LibraryBinding] trait.
 use crate::collections::{MutSpan, NonNullConst, Result};
+use crate::errors::Error;
 use crate::library::library_loader::LibraryLoaderInterface;
 use crate::library::{
-    Error, InternalHandle, LibraryHandle, LibraryType, LoaderHandle, OSPathChar, Symbol,
+    InternalHandle, LibraryHandle, LibraryType, LoaderHandle, OSPathChar, Symbol,
 };
 use crate::{Bool, CBase, CBaseFn, CBaseInterface, TypeWrapper};
 use std::ffi::c_void;

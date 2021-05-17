@@ -7,7 +7,7 @@
 //! # let base_interface: &mut dyn CBaseBinding = unsafe { std::mem::MaybeUninit::uninit().assume_init() };
 //! use emf_core_base_rs_ffi::sys::api::SysBinding;
 //! use emf_core_base_rs_ffi::version::api::VersionBinding;
-//! use emf_core_base_rs_ffi::collections::{NonNullConst, ConstSpan};
+//! use emf_core_base_rs_ffi::collections::{NonNullConst, ConstSpan, Optional};
 //!
 //! unsafe {
 //!     // `base_interface` has the type `&mut dyn CBaseBinding`.
@@ -19,11 +19,11 @@
 //!                     NonNullConst::from(&v2_string)
 //!                     ).into_rust() {
 //!         Ok(v) => v,
-//!         Err(_) => {
+//!         Err(e) => {
 //!             SysBinding::lock(base_interface);
 //!             SysBinding::panic(
 //!                 base_interface,
-//!                 Some(NonNullConst::from(b"Could not construct from string.\0"))
+//!                 Optional::Some(e)
 //!             );
 //!             SysBinding::unlock(base_interface);
 //!         }
@@ -36,7 +36,7 @@
 //!         SysBinding::lock(base_interface);
 //!         SysBinding::panic(
 //!             base_interface,
-//!             Some(NonNullConst::from(b"Should not happen.\0"))
+//!             Optional::None
 //!         );
 //!         SysBinding::unlock(base_interface);
 //!     }
@@ -65,15 +65,6 @@ pub const VERSION_BUILD: i64 = 0;
 
 /// Version string of the targeted version.
 pub const VERSION_STRING: &str = "0.1.0";
-
-/// Errors of the version api.
-#[repr(i32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub enum Error {
-    InvalidString = 0,
-    BufferOverflow = 1,
-}
 
 /// Errors of the version api.
 #[repr(i8)]
