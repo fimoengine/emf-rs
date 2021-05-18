@@ -5,21 +5,21 @@
 //! ```no_run
 //! # use emf_core_base_rs::{CBaseAccess, CBase};
 //! # let base_interface: &mut CBase = unsafe { std::mem::MaybeUninit::uninit().assume_init() };
-//! use emf_core_base_rs::CBaseAPI;
-//! use emf_core_base_rs::library::{LibraryAPI, DEFAULT_HANDLE, Symbol, Error};
+//! use emf_core_base_rs::{CBaseAPI, Error};
+//! use emf_core_base_rs::library::{LibraryAPI, DEFAULT_HANDLE, Symbol};
 //! use std::path::Path;
 //! use std::ffi::CString;
 //!
-//! let result = CBaseAccess::lock(base_interface, |interface| -> Result<i32, Error> {
+//! let result = CBaseAccess::lock(base_interface, |interface| -> Result<i32, Error<_>> {
 //!     let library_path = Path::new("path to my library");
 //!     let symbol_name = CString::new("add_function").unwrap();
 //!
-//!     let library = LibraryAPI::load(interface, &DEFAULT_HANDLE, &library_path)?;
+//!     let library = LibraryAPI::load(interface, &DEFAULT_HANDLE, library_path)?;
 //!     let symbol: Symbol<extern "C" fn(i32, i32) -> i32> =
 //!         LibraryAPI::get_function_symbol(
 //!             interface,
 //!             &library,
-//!             &symbol_name,
+//!             symbol_name,
 //!             |f| unsafe { std::mem::transmute(f) }
 //!         )?;
 //!
@@ -47,16 +47,6 @@ pub use api::LibraryAPI;
 /// Handle of the default loader.
 pub const DEFAULT_HANDLE: Loader<'static, BorrowMutable<'static>> =
     unsafe { Loader::new(crate::ffi::library::DEFAULT_HANDLE) };
-
-/// Errors of the library api.
-#[non_exhaustive]
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub enum Error {
-    /// Error denoting an invalid library type.
-    InvalidLibraryType(String),
-    /// Raw ffi library error.
-    FFIError(crate::ffi::library::Error),
-}
 
 /// A library handle.
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]

@@ -2,7 +2,6 @@
 use crate::collections::{NonNullConst, Optional};
 use crate::errors::ErrorInfo;
 use crate::TypeWrapper;
-use std::error::Error as ErrorStd;
 use std::fmt::{Debug, Display, Formatter};
 use std::ptr::NonNull;
 
@@ -83,6 +82,8 @@ pub struct Error {
     pub internal: ErrorRef,
 }
 
+unsafe impl Send for Error {}
+
 impl Error {
     /// Lower-level source, if it exists.
     ///
@@ -130,7 +131,7 @@ impl Debug for Error {
 
 impl<T> From<T> for Error
 where
-    T: ErrorStd + Sized,
+    T: std::error::Error + Send,
 {
     fn from(error: T) -> Self {
         Self::from(Box::new(box_error::OwnedError::new(error)))
@@ -263,12 +264,14 @@ mod box_error {
         }
     }
 
-    pub struct OwnedError<T: Error> {
+    pub struct OwnedError<T: Error + Send> {
         error: Box<T>,
         source: Option<Box<InternalError>>,
     }
 
-    impl<T: Error> OwnedError<T> {
+    unsafe impl<T: Error + Send> Send for OwnedError<T> {}
+
+    impl<T: Error + Send> OwnedError<T> {
         #[inline]
         pub fn new(error: T) -> Self {
             let mut err = Self {
@@ -296,7 +299,7 @@ mod box_error {
         }
     }
 
-    impl<T: Error> From<Box<OwnedError<T>>> for Err {
+    impl<T: Error + Send> From<Box<OwnedError<T>>> for Err {
         fn from(error: Box<OwnedError<T>>) -> Self {
             Self {
                 internal: ErrorRef {
@@ -307,7 +310,7 @@ mod box_error {
         }
     }
 
-    impl<T: Error> AsErrorVTable for Box<OwnedError<T>> {
+    impl<T: Error + Send> AsErrorVTable for Box<OwnedError<T>> {
         const VTABLE: ErrorVTable = ErrorVTable {
             cleanup_fn: TypeWrapper(Self::cleanup_fn),
             source_fn: TypeWrapper(Self::source_fn),

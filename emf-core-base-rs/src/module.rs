@@ -8,12 +8,13 @@
 //! use emf_core_base_rs::CBaseAPI;
 //! use emf_core_base_rs::version::VersionAPI;
 //! use emf_core_base_rs::module::{
-//!     ModuleAPI, DEFAULT_HANDLE, InterfaceDescriptor, InterfaceName, Error, Module
+//!     ModuleAPI, DEFAULT_HANDLE, InterfaceDescriptor, InterfaceName, Module
 //! };
 //! use emf_core_base_rs::ffi::collections::ConstSpan;
+//! use emf_core_base_rs::Error;
 //! use std::path::Path;
 //!
-//! let result = CBaseAccess::lock(base_interface, |interface| -> Result<Module<'_, _>, Error> {
+//! let result = CBaseAccess::lock(base_interface, |interface| -> Result<Module<'_, _>, Error<_>> {
 //!     let module_path = Path::new("path to a module");
 //!     let interface_desc = InterfaceDescriptor {
 //!         name: InterfaceName::from("my_interface"),
@@ -60,16 +61,6 @@ pub use api::ModuleAPI;
 /// Handle of the default loader.
 pub const DEFAULT_HANDLE: Loader<'static, BorrowMutable<'static>> =
     unsafe { Loader::new(crate::ffi::module::MODULE_LOADER_DEFAULT_HANDLE) };
-
-/// Errors of the module api.
-#[non_exhaustive]
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub enum Error {
-    /// A Parameter error.
-    ParameterError(String),
-    /// Raw ffi module error.
-    FFIError(crate::ffi::module::Error),
-}
 
 /// A module handle.
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]

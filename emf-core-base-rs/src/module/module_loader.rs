@@ -6,12 +6,11 @@ use crate::ffi::module::module_loader::{
     NativeModuleLoaderInterface,
 };
 use crate::module::native_module::{NativeModule, NativeModuleInstance};
-use crate::module::{
-    Error, Interface, InterfaceDescriptor, InternalModule, ModuleInfo, ModuleStatus,
-};
+use crate::module::{Interface, InterfaceDescriptor, InternalModule, ModuleInfo, ModuleStatus};
 use crate::ownership::{
     AccessIdentifier, ImmutableAccessIdentifier, MutableAccessIdentifier, Owned,
 };
+use crate::Error;
 use crate::ToOsPathBuff;
 use std::ffi::c_void;
 use std::marker::PhantomData;
@@ -62,8 +61,8 @@ pub trait ModuleLoaderAPI<'a> {
     /// of the module api, if not handled with care.
     unsafe fn add_module(
         &mut self,
-        path: &impl AsRef<Path>,
-    ) -> Result<InternalModule<Owned>, Error>;
+        path: impl AsRef<Path>,
+    ) -> Result<InternalModule<Owned>, Error<Owned>>;
 
     /// Removes a module.
     ///
@@ -80,7 +79,7 @@ pub trait ModuleLoaderAPI<'a> {
     /// The function crosses the ffi boundary.
     /// Direct usage of a [ModuleLoaderAPI] may break some invariants
     /// of the module api, if not handled with care.
-    unsafe fn remove_module(&mut self, module: InternalModule<Owned>) -> Result<(), Error>;
+    unsafe fn remove_module(&mut self, module: InternalModule<Owned>) -> Result<(), Error<Owned>>;
 
     /// Loads a module.
     ///
@@ -98,7 +97,7 @@ pub trait ModuleLoaderAPI<'a> {
     /// The function crosses the ffi boundary.
     /// Direct usage of a [ModuleLoaderAPI] may break some invariants
     /// of the module api, if not handled with care.
-    unsafe fn load<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error>
+    unsafe fn load<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error<Owned>>
     where
         O: MutableAccessIdentifier;
 
@@ -117,7 +116,7 @@ pub trait ModuleLoaderAPI<'a> {
     /// The function crosses the ffi boundary.
     /// Direct usage of a [ModuleLoaderAPI] may break some invariants
     /// of the module api, if not handled with care.
-    unsafe fn unload<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error>
+    unsafe fn unload<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error<Owned>>
     where
         O: MutableAccessIdentifier;
 
@@ -137,7 +136,7 @@ pub trait ModuleLoaderAPI<'a> {
     /// The function crosses the ffi boundary.
     /// Direct usage of a [ModuleLoaderAPI] may break some invariants
     /// of the module api, if not handled with care.
-    unsafe fn initialize<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error>
+    unsafe fn initialize<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error<Owned>>
     where
         O: MutableAccessIdentifier;
 
@@ -156,7 +155,7 @@ pub trait ModuleLoaderAPI<'a> {
     /// The function crosses the ffi boundary.
     /// Direct usage of a [ModuleLoaderAPI] may break some invariants
     /// of the module api, if not handled with care.
-    unsafe fn terminate<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error>
+    unsafe fn terminate<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error<Owned>>
     where
         O: MutableAccessIdentifier;
 
@@ -175,7 +174,10 @@ pub trait ModuleLoaderAPI<'a> {
     /// The function crosses the ffi boundary.
     /// Direct usage of a [ModuleLoaderAPI] may break some invariants
     /// of the module api, if not handled with care.
-    unsafe fn fetch_status<O>(&self, module: &InternalModule<O>) -> Result<ModuleStatus, Error>
+    unsafe fn fetch_status<O>(
+        &self,
+        module: &InternalModule<O>,
+    ) -> Result<ModuleStatus, Error<Owned>>
     where
         O: ImmutableAccessIdentifier;
 
@@ -200,7 +202,7 @@ pub trait ModuleLoaderAPI<'a> {
         module: &'module InternalModule<O>,
         interface: &InterfaceDescriptor,
         caster: impl FnOnce(crate::ffi::module::Interface) -> T,
-    ) -> Result<Interface<'module, T>, Error>
+    ) -> Result<Interface<'module, T>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier;
 
@@ -222,7 +224,7 @@ pub trait ModuleLoaderAPI<'a> {
     unsafe fn get_module_info<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module ModuleInfo, Error>
+    ) -> Result<&'module ModuleInfo, Error<Owned>>
     where
         O: ImmutableAccessIdentifier;
 
@@ -246,7 +248,7 @@ pub trait ModuleLoaderAPI<'a> {
     unsafe fn get_module_path<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module [OSPathChar], Error>
+    ) -> Result<&'module [OSPathChar], Error<Owned>>
     where
         O: ImmutableAccessIdentifier;
 
@@ -268,7 +270,7 @@ pub trait ModuleLoaderAPI<'a> {
     unsafe fn get_load_dependencies<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module [InterfaceDescriptor], Error>
+    ) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
     where
         O: ImmutableAccessIdentifier;
 
@@ -290,7 +292,7 @@ pub trait ModuleLoaderAPI<'a> {
     unsafe fn get_runtime_dependencies<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module [InterfaceDescriptor], Error>
+    ) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
     where
         O: ImmutableAccessIdentifier;
 
@@ -312,7 +314,7 @@ pub trait ModuleLoaderAPI<'a> {
     unsafe fn get_exportable_interfaces<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module [InterfaceDescriptor], Error>
+    ) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
     where
         O: ImmutableAccessIdentifier;
 
@@ -421,8 +423,8 @@ where
     #[inline]
     pub unsafe fn add_module(
         &mut self,
-        path: &impl AsRef<Path>,
-    ) -> Result<InternalModule<Owned>, Error> {
+        path: impl AsRef<Path>,
+    ) -> Result<InternalModule<Owned>, Error<Owned>> {
         self._loader.add_module(path)
     }
 
@@ -442,7 +444,10 @@ where
     /// Direct usage of a [ModuleLoader] may break some invariants
     /// of the module api, if not handled with care.
     #[inline]
-    pub unsafe fn remove_module(&mut self, module: InternalModule<Owned>) -> Result<(), Error> {
+    pub unsafe fn remove_module(
+        &mut self,
+        module: InternalModule<Owned>,
+    ) -> Result<(), Error<Owned>> {
         self._loader.remove_module(module)
     }
 
@@ -463,7 +468,7 @@ where
     /// Direct usage of a [ModuleLoader] may break some invariants
     /// of the module api, if not handled with care.
     #[inline]
-    pub unsafe fn load<MO>(&mut self, module: &mut InternalModule<MO>) -> Result<(), Error>
+    pub unsafe fn load<MO>(&mut self, module: &mut InternalModule<MO>) -> Result<(), Error<Owned>>
     where
         MO: MutableAccessIdentifier,
     {
@@ -486,7 +491,7 @@ where
     /// Direct usage of a [ModuleLoader] may break some invariants
     /// of the module api, if not handled with care.
     #[inline]
-    pub unsafe fn unload<MO>(&mut self, module: &mut InternalModule<MO>) -> Result<(), Error>
+    pub unsafe fn unload<MO>(&mut self, module: &mut InternalModule<MO>) -> Result<(), Error<Owned>>
     where
         MO: MutableAccessIdentifier,
     {
@@ -510,7 +515,10 @@ where
     /// Direct usage of a [ModuleLoader] may break some invariants
     /// of the module api, if not handled with care.
     #[inline]
-    pub unsafe fn initialize<MO>(&mut self, module: &mut InternalModule<MO>) -> Result<(), Error>
+    pub unsafe fn initialize<MO>(
+        &mut self,
+        module: &mut InternalModule<MO>,
+    ) -> Result<(), Error<Owned>>
     where
         MO: MutableAccessIdentifier,
     {
@@ -533,7 +541,10 @@ where
     /// Direct usage of a [ModuleLoader] may break some invariants
     /// of the module api, if not handled with care.
     #[inline]
-    pub unsafe fn terminate<MO>(&mut self, module: &mut InternalModule<MO>) -> Result<(), Error>
+    pub unsafe fn terminate<MO>(
+        &mut self,
+        module: &mut InternalModule<MO>,
+    ) -> Result<(), Error<Owned>>
     where
         MO: MutableAccessIdentifier,
     {
@@ -565,7 +576,7 @@ where
     pub unsafe fn fetch_status<MO>(
         &self,
         module: &InternalModule<MO>,
-    ) -> Result<ModuleStatus, Error>
+    ) -> Result<ModuleStatus, Error<Owned>>
     where
         MO: ImmutableAccessIdentifier,
     {
@@ -594,7 +605,7 @@ where
         module: &'module InternalModule<MO>,
         interface: &InterfaceDescriptor,
         caster: impl FnOnce(crate::ffi::module::Interface) -> IT,
-    ) -> Result<Interface<'module, IT>, Error>
+    ) -> Result<Interface<'module, IT>, Error<Owned>>
     where
         MO: ImmutableAccessIdentifier,
     {
@@ -620,7 +631,7 @@ where
     pub unsafe fn get_module_info<'module, MO>(
         &self,
         module: &'module InternalModule<MO>,
-    ) -> Result<&'module ModuleInfo, Error>
+    ) -> Result<&'module ModuleInfo, Error<Owned>>
     where
         MO: ImmutableAccessIdentifier,
     {
@@ -648,7 +659,7 @@ where
     pub unsafe fn get_module_path<'module, MO>(
         &self,
         module: &'module InternalModule<MO>,
-    ) -> Result<&'module [OSPathChar], Error>
+    ) -> Result<&'module [OSPathChar], Error<Owned>>
     where
         MO: ImmutableAccessIdentifier,
     {
@@ -674,7 +685,7 @@ where
     pub unsafe fn get_load_dependencies<'module, MO>(
         &self,
         module: &'module InternalModule<MO>,
-    ) -> Result<&'module [InterfaceDescriptor], Error>
+    ) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
     where
         MO: ImmutableAccessIdentifier,
     {
@@ -700,7 +711,7 @@ where
     pub unsafe fn get_runtime_dependencies<'module, MO>(
         &self,
         module: &'module InternalModule<MO>,
-    ) -> Result<&'module [InterfaceDescriptor], Error>
+    ) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
     where
         MO: ImmutableAccessIdentifier,
     {
@@ -726,7 +737,7 @@ where
     pub unsafe fn get_exportable_interfaces<'module, MO>(
         &self,
         module: &'module InternalModule<MO>,
-    ) -> Result<&'module [InterfaceDescriptor], Error>
+    ) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
     where
         MO: ImmutableAccessIdentifier,
     {
@@ -841,29 +852,29 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
     #[inline]
     unsafe fn add_module(
         &mut self,
-        path: &impl AsRef<Path>,
-    ) -> Result<InternalModule<Owned>, Error> {
+        path: impl AsRef<Path>,
+    ) -> Result<InternalModule<Owned>, Error<Owned>> {
         let path_buff = path.as_ref().to_os_path_buff_null();
         self._interface
             .into_mut()
             .as_mut()
             .add_module(NonNullConst::from(path_buff.as_slice()))
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |v| Ok(InternalModule::new(v)))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |v| Ok(InternalModule::new(v)))
     }
 
     #[inline]
-    unsafe fn remove_module(&mut self, module: InternalModule<Owned>) -> Result<(), Error> {
+    unsafe fn remove_module(&mut self, module: InternalModule<Owned>) -> Result<(), Error<Owned>> {
         self._interface
             .into_mut()
             .as_mut()
             .remove_module(module.as_handle())
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |_v| Ok(()))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
     }
 
     #[inline]
-    unsafe fn load<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error>
+    unsafe fn load<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error<Owned>>
     where
         O: MutableAccessIdentifier,
     {
@@ -871,12 +882,12 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
             .into_mut()
             .as_mut()
             .load(module.as_handle())
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |_v| Ok(()))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
     }
 
     #[inline]
-    unsafe fn unload<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error>
+    unsafe fn unload<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error<Owned>>
     where
         O: MutableAccessIdentifier,
     {
@@ -884,12 +895,12 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
             .into_mut()
             .as_mut()
             .unload(module.as_handle())
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |_v| Ok(()))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
     }
 
     #[inline]
-    unsafe fn initialize<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error>
+    unsafe fn initialize<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error<Owned>>
     where
         O: MutableAccessIdentifier,
     {
@@ -897,12 +908,12 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
             .into_mut()
             .as_mut()
             .initialize(module.as_handle())
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |_v| Ok(()))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
     }
 
     #[inline]
-    unsafe fn terminate<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error>
+    unsafe fn terminate<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error<Owned>>
     where
         O: MutableAccessIdentifier,
     {
@@ -910,20 +921,23 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
             .into_mut()
             .as_mut()
             .terminate(module.as_handle())
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |_v| Ok(()))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
     }
 
     #[inline]
-    unsafe fn fetch_status<O>(&self, module: &InternalModule<O>) -> Result<ModuleStatus, Error>
+    unsafe fn fetch_status<O>(
+        &self,
+        module: &InternalModule<O>,
+    ) -> Result<ModuleStatus, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
         self._interface
             .as_ref()
             .fetch_status(module.as_handle())
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), Ok)
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), Ok)
     }
 
     #[inline]
@@ -932,49 +946,46 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
         module: &'module InternalModule<O>,
         interface: &InterfaceDescriptor,
         caster: impl FnOnce(crate::ffi::module::Interface) -> T,
-    ) -> Result<Interface<'module, T>, Error>
+    ) -> Result<Interface<'module, T>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
         self._interface
             .as_ref()
             .get_interface(module.as_handle(), NonNullConst::from(interface))
-            .to_result()
-            .map_or_else(
-                |e| Err(Error::FFIError(e)),
-                |v| Ok(Interface::new(caster(v))),
-            )
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |v| Ok(Interface::new(caster(v))))
     }
 
     #[inline]
     unsafe fn get_module_info<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module ModuleInfo, Error>
+    ) -> Result<&'module ModuleInfo, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
         self._interface
             .as_ref()
             .get_module_info(module.as_handle())
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |v| Ok(&*v.as_ptr()))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |v| Ok(&*v.as_ptr()))
     }
 
     #[inline]
     unsafe fn get_module_path<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module [OSPathChar], Error>
+    ) -> Result<&'module [OSPathChar], Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
         self._interface
             .as_ref()
             .get_module_path(module.as_handle())
-            .to_result()
+            .into_rust()
             .map_or_else(
-                |e| Err(Error::FFIError(e)),
+                |e| Err(Error::from(e)),
                 |v| {
                     let mut end = v.as_ptr();
                     while *end != 0 {
@@ -990,16 +1001,16 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
     unsafe fn get_load_dependencies<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module [InterfaceDescriptor], Error>
+    ) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
         self._interface
             .as_ref()
             .get_load_dependencies(module.as_handle())
-            .to_result()
+            .into_rust()
             .map_or_else(
-                |e| Err(Error::FFIError(e)),
+                |e| Err(Error::from(e)),
                 |v| match v.is_empty() {
                     true => Ok(<&[_]>::default()),
                     false => Ok(std::slice::from_raw_parts(v.as_ptr(), v.len())),
@@ -1011,16 +1022,16 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
     unsafe fn get_runtime_dependencies<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module [InterfaceDescriptor], Error>
+    ) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
         self._interface
             .as_ref()
             .get_runtime_dependencies(module.as_handle())
-            .to_result()
+            .into_rust()
             .map_or_else(
-                |e| Err(Error::FFIError(e)),
+                |e| Err(Error::from(e)),
                 |v| match v.is_empty() {
                     true => Ok(<&[_]>::default()),
                     false => Ok(std::slice::from_raw_parts(v.as_ptr(), v.len())),
@@ -1032,16 +1043,16 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
     unsafe fn get_exportable_interfaces<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module [InterfaceDescriptor], Error>
+    ) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
         self._interface
             .as_ref()
             .get_exportable_interfaces(module.as_handle())
-            .to_result()
+            .into_rust()
             .map_or_else(
-                |e| Err(Error::FFIError(e)),
+                |e| Err(Error::from(e)),
                 |v| match v.is_empty() {
                     true => Ok(<&[_]>::default()),
                     false => Ok(std::slice::from_raw_parts(v.as_ptr(), v.len())),
@@ -1102,18 +1113,18 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoader<'a> {
     #[inline]
     unsafe fn add_module(
         &mut self,
-        path: &impl AsRef<Path>,
-    ) -> Result<InternalModule<Owned>, Error> {
+        path: impl AsRef<Path>,
+    ) -> Result<InternalModule<Owned>, Error<Owned>> {
         self._interface.add_module(path)
     }
 
     #[inline]
-    unsafe fn remove_module(&mut self, module: InternalModule<Owned>) -> Result<(), Error> {
+    unsafe fn remove_module(&mut self, module: InternalModule<Owned>) -> Result<(), Error<Owned>> {
         self._interface.remove_module(module)
     }
 
     #[inline]
-    unsafe fn load<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error>
+    unsafe fn load<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error<Owned>>
     where
         O: MutableAccessIdentifier,
     {
@@ -1121,7 +1132,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoader<'a> {
     }
 
     #[inline]
-    unsafe fn unload<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error>
+    unsafe fn unload<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error<Owned>>
     where
         O: MutableAccessIdentifier,
     {
@@ -1129,7 +1140,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoader<'a> {
     }
 
     #[inline]
-    unsafe fn initialize<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error>
+    unsafe fn initialize<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error<Owned>>
     where
         O: MutableAccessIdentifier,
     {
@@ -1137,7 +1148,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoader<'a> {
     }
 
     #[inline]
-    unsafe fn terminate<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error>
+    unsafe fn terminate<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error<Owned>>
     where
         O: MutableAccessIdentifier,
     {
@@ -1145,7 +1156,10 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoader<'a> {
     }
 
     #[inline]
-    unsafe fn fetch_status<O>(&self, module: &InternalModule<O>) -> Result<ModuleStatus, Error>
+    unsafe fn fetch_status<O>(
+        &self,
+        module: &InternalModule<O>,
+    ) -> Result<ModuleStatus, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -1158,7 +1172,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoader<'a> {
         module: &'module InternalModule<O>,
         interface: &InterfaceDescriptor,
         caster: impl FnOnce(crate::ffi::module::Interface) -> T,
-    ) -> Result<Interface<'module, T>, Error>
+    ) -> Result<Interface<'module, T>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -1169,7 +1183,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoader<'a> {
     unsafe fn get_module_info<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module ModuleInfo, Error>
+    ) -> Result<&'module ModuleInfo, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -1180,7 +1194,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoader<'a> {
     unsafe fn get_module_path<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module [OSPathChar], Error>
+    ) -> Result<&'module [OSPathChar], Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -1191,7 +1205,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoader<'a> {
     unsafe fn get_load_dependencies<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module [InterfaceDescriptor], Error>
+    ) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -1202,7 +1216,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoader<'a> {
     unsafe fn get_runtime_dependencies<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module [InterfaceDescriptor], Error>
+    ) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -1213,7 +1227,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoader<'a> {
     unsafe fn get_exportable_interfaces<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module [InterfaceDescriptor], Error>
+    ) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -1277,18 +1291,18 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     #[inline]
     unsafe fn add_module(
         &mut self,
-        path: &impl AsRef<Path>,
-    ) -> Result<InternalModule<Owned>, Error> {
+        path: impl AsRef<Path>,
+    ) -> Result<InternalModule<Owned>, Error<Owned>> {
         NativeLoader::from_interface(self.to_interface()).add_module(path)
     }
 
     #[inline]
-    unsafe fn remove_module(&mut self, module: InternalModule<Owned>) -> Result<(), Error> {
+    unsafe fn remove_module(&mut self, module: InternalModule<Owned>) -> Result<(), Error<Owned>> {
         NativeLoader::from_interface(self.to_interface()).remove_module(module)
     }
 
     #[inline]
-    unsafe fn load<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error>
+    unsafe fn load<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error<Owned>>
     where
         O: MutableAccessIdentifier,
     {
@@ -1296,7 +1310,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     }
 
     #[inline]
-    unsafe fn unload<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error>
+    unsafe fn unload<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error<Owned>>
     where
         O: MutableAccessIdentifier,
     {
@@ -1304,7 +1318,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     }
 
     #[inline]
-    unsafe fn initialize<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error>
+    unsafe fn initialize<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error<Owned>>
     where
         O: MutableAccessIdentifier,
     {
@@ -1312,7 +1326,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     }
 
     #[inline]
-    unsafe fn terminate<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error>
+    unsafe fn terminate<O>(&mut self, module: &mut InternalModule<O>) -> Result<(), Error<Owned>>
     where
         O: MutableAccessIdentifier,
     {
@@ -1320,7 +1334,10 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     }
 
     #[inline]
-    unsafe fn fetch_status<O>(&self, module: &InternalModule<O>) -> Result<ModuleStatus, Error>
+    unsafe fn fetch_status<O>(
+        &self,
+        module: &InternalModule<O>,
+    ) -> Result<ModuleStatus, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -1333,7 +1350,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
         module: &'module InternalModule<O>,
         interface: &InterfaceDescriptor,
         caster: impl FnOnce(crate::ffi::module::Interface) -> T,
-    ) -> Result<Interface<'module, T>, Error>
+    ) -> Result<Interface<'module, T>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -1344,7 +1361,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     unsafe fn get_module_info<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module ModuleInfo, Error>
+    ) -> Result<&'module ModuleInfo, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -1355,7 +1372,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     unsafe fn get_module_path<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module [OSPathChar], Error>
+    ) -> Result<&'module [OSPathChar], Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -1366,7 +1383,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     unsafe fn get_load_dependencies<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module [InterfaceDescriptor], Error>
+    ) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -1377,7 +1394,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     unsafe fn get_runtime_dependencies<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module [InterfaceDescriptor], Error>
+    ) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -1388,7 +1405,7 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     unsafe fn get_exportable_interfaces<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<&'module [InterfaceDescriptor], Error>
+    ) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -1421,16 +1438,16 @@ impl<'a> NativeLoaderInternal<'a> {
     pub unsafe fn get_native_module<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<NativeModuleInstance<'module, O>, Error>
+    ) -> Result<NativeModuleInstance<'module, O>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
         self._interface
             .as_ref()
             .get_native_module(module.as_handle())
-            .to_result()
+            .into_rust()
             .map_or_else(
-                |e| Err(Error::FFIError(e)),
+                |e| Err(Error::from(e)),
                 |v| Ok(NativeModuleInstance::new(v)),
             )
     }
@@ -1454,14 +1471,14 @@ impl<'a> NativeLoaderInternal<'a> {
     pub unsafe fn get_native_module_interface<'module, O>(
         &self,
         module: &'module InternalModule<O>,
-    ) -> Result<NativeModule<'module, O>, Error>
+    ) -> Result<NativeModule<'module, O>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
         self._interface
             .as_ref()
             .get_native_module_interface(module.as_handle())
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |v| Ok(NativeModule::new(v)))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |v| Ok(NativeModule::new(v)))
     }
 }

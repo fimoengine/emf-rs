@@ -8,8 +8,9 @@
 //! use emf_core_base_rs::ffi::collections::ConstSpan;
 //! use std::path::Path;
 //!
-//! # use emf_core_base_rs::module::Error;
-//! # fn main() -> Result<(), Error> {
+//! # use emf_core_base_rs::Error;
+//! # use emf_core_base_rs::ownership::Owned;
+//! # fn main() -> Result<(), Error<Owned>> {
 //! let mut lock = LockToken::<Unlock>::lock();
 //!
 //! let module_path = Path::new("path to a module");
@@ -19,23 +20,24 @@
 //!     extensions: ConstSpan::new()
 //! };
 //!
-//! let mut module = module::add_module(&DEFAULT_HANDLE, &module_path)?;
-//! module::load(&mut module)?;
-//! module::initialize(&mut module)?;
-//! module::export_interface(&mut module, &interface_desc)?;
+//! let mut module = module::add_module(&mut lock, &DEFAULT_HANDLE, module_path)?;
+//! module::load(&mut lock, &mut module)?;
+//! module::initialize(&mut lock, &mut module)?;
+//! module::export_interface(&mut lock, &mut module, &interface_desc)?;
 //! # Ok(())
 //! # }
 //! ```
 use crate::ffi::library::OSPathChar;
-use crate::global::{get_interface as get_interface_glob, get_mut_interface};
+use crate::global::{get_interface as get_interface_glob, get_mut_interface, LockToken};
 use crate::module::module_loader::{ModuleLoader, ModuleLoaderABICompat, ModuleLoaderAPI};
 use crate::module::{
-    Error, Interface, InterfaceDescriptor, InternalModule, Loader, Module, ModuleAPI, ModuleInfo,
+    Interface, InterfaceDescriptor, InternalModule, Loader, Module, ModuleAPI, ModuleInfo,
     ModuleStatus, ModuleType,
 };
 use crate::ownership::{
     BorrowImmutable, BorrowMutable, ImmutableAccessIdentifier, MutableAccessIdentifier, Owned,
 };
+use crate::Error;
 use std::path::Path;
 
 /// Registers a new module loader.
@@ -50,10 +52,11 @@ use std::path::Path;
 ///
 /// Handle on success, error otherwise.
 #[inline]
-pub fn register_loader<'loader, LT, L>(
+pub fn register_loader<'loader, LT, L, T>(
+    _token: &mut LockToken<T>,
     loader: &'loader LT,
-    mod_type: &impl AsRef<str>,
-) -> Result<Loader<'static, Owned>, Error>
+    mod_type: impl AsRef<str>,
+) -> Result<Loader<'static, Owned>, Error<Owned>>
 where
     L: ModuleLoaderAPI<'static>,
     ModuleLoader<L, Owned>: From<&'loader LT>,
@@ -73,7 +76,10 @@ where
 ///
 /// Error on failure.
 #[inline]
-pub fn unregister_loader(loader: Loader<'_, Owned>) -> Result<(), Error> {
+pub fn unregister_loader<T>(
+    _token: &mut LockToken<T>,
+    loader: Loader<'_, Owned>,
+) -> Result<(), Error<Owned>> {
     ModuleAPI::unregister_loader(get_mut_interface(), loader)
 }
 
@@ -87,9 +93,10 @@ pub fn unregister_loader(loader: Loader<'_, Owned>) -> Result<(), Error> {
 ///
 /// Interface on success, error otherwise.
 #[inline]
-pub fn get_loader_interface<'loader, O, L>(
+pub fn get_loader_interface<'loader, O, L, T>(
+    _token: &LockToken<T>,
     loader: &Loader<'loader, O>,
-) -> Result<ModuleLoader<L, O>, Error>
+) -> Result<ModuleLoader<L, O>, Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
     L: ModuleLoaderAPI<'loader> + ModuleLoaderABICompat,
@@ -107,9 +114,10 @@ where
 ///
 /// Handle on success, error otherwise.
 #[inline]
-pub fn get_loader_handle_from_type(
-    mod_type: &impl AsRef<str>,
-) -> Result<Loader<'static, BorrowMutable<'_>>, Error> {
+pub fn get_loader_handle_from_type<'tok, T>(
+    _token: &'tok LockToken<T>,
+    mod_type: impl AsRef<str>,
+) -> Result<Loader<'static, BorrowMutable<'tok>>, Error<Owned>> {
     ModuleAPI::get_loader_handle_from_type(get_interface_glob(), mod_type)
 }
 
@@ -123,9 +131,10 @@ pub fn get_loader_handle_from_type(
 ///
 /// Handle on success, error otherwise.
 #[inline]
-pub fn get_loader_handle_from_module<'m, 'module, O>(
-    module: &'m Module<'module, O>,
-) -> Result<Loader<'module, BorrowMutable<'m>>, Error>
+pub fn get_loader_handle_from_module<'m, 'module, O, T>(
+    _token: &'m LockToken<T>,
+    module: &Module<'module, O>,
+) -> Result<Loader<'module, BorrowMutable<'m>>, Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
 {
@@ -138,7 +147,7 @@ where
 ///
 /// Number of modules.
 #[inline]
-pub fn get_num_modules() -> usize {
+pub fn get_num_modules<T>(_token: &LockToken<T>) -> usize {
     ModuleAPI::get_num_modules(get_interface_glob())
 }
 
@@ -148,7 +157,7 @@ pub fn get_num_modules() -> usize {
 ///
 /// Number of module loaders.
 #[inline]
-pub fn get_num_loaders() -> usize {
+pub fn get_num_loaders<T>(_token: &LockToken<T>) -> usize {
     ModuleAPI::get_num_loaders(get_interface_glob())
 }
 
@@ -158,7 +167,7 @@ pub fn get_num_loaders() -> usize {
 ///
 /// Number of exported interfaces.
 #[inline]
-pub fn get_num_exported_interfaces() -> usize {
+pub fn get_num_exported_interfaces<T>(_token: &LockToken<T>) -> usize {
     ModuleAPI::get_num_exported_interfaces(get_interface_glob())
 }
 
@@ -168,7 +177,7 @@ pub fn get_num_exported_interfaces() -> usize {
 ///
 /// [true] if it exists, [false] otherwise.
 #[inline]
-pub fn module_exists<O>(module: &Module<'_, O>) -> bool
+pub fn module_exists<O, T>(_token: &LockToken<T>, module: &Module<'_, O>) -> bool
 where
     O: ImmutableAccessIdentifier,
 {
@@ -181,7 +190,10 @@ where
 ///
 /// [true] if it exists, [false] otherwise.
 #[inline]
-pub fn type_exists(mod_type: &impl AsRef<str>) -> Result<bool, Error> {
+pub fn type_exists<T>(
+    _token: &LockToken<T>,
+    mod_type: impl AsRef<str>,
+) -> Result<bool, Error<Owned>> {
     ModuleAPI::type_exists(get_interface_glob(), mod_type)
 }
 
@@ -191,7 +203,10 @@ pub fn type_exists(mod_type: &impl AsRef<str>) -> Result<bool, Error> {
 ///
 /// [true] if it exists, [false] otherwise.
 #[inline]
-pub fn exported_interface_exists(interface: &InterfaceDescriptor) -> bool {
+pub fn exported_interface_exists<T>(
+    _token: &LockToken<T>,
+    interface: &InterfaceDescriptor,
+) -> bool {
     ModuleAPI::exported_interface_exists(get_interface_glob(), interface)
 }
 
@@ -205,7 +220,10 @@ pub fn exported_interface_exists(interface: &InterfaceDescriptor) -> bool {
 ///
 /// Number if written module info on success, error otherwise.
 #[inline]
-pub fn get_modules(buffer: &mut impl AsMut<[ModuleInfo]>) -> Result<usize, Error> {
+pub fn get_modules<T>(
+    _token: &LockToken<T>,
+    buffer: impl AsMut<[ModuleInfo]>,
+) -> Result<usize, Error<Owned>> {
     ModuleAPI::get_modules(get_interface_glob(), buffer)
 }
 
@@ -219,7 +237,10 @@ pub fn get_modules(buffer: &mut impl AsMut<[ModuleInfo]>) -> Result<usize, Error
 ///
 /// Number if written module types on success, error otherwise.
 #[inline]
-pub fn get_module_types(buffer: &mut impl AsMut<[ModuleType]>) -> Result<usize, Error> {
+pub fn get_module_types<T>(
+    _token: &LockToken<T>,
+    buffer: impl AsMut<[ModuleType]>,
+) -> Result<usize, Error<Owned>> {
     ModuleAPI::get_module_types(get_interface_glob(), buffer)
 }
 
@@ -233,9 +254,10 @@ pub fn get_module_types(buffer: &mut impl AsMut<[ModuleType]>) -> Result<usize, 
 ///
 /// Number if written descriptors on success, error otherwise.
 #[inline]
-pub fn get_exported_interfaces(
-    buffer: &mut impl AsMut<[InterfaceDescriptor]>,
-) -> Result<usize, Error> {
+pub fn get_exported_interfaces<T>(
+    _token: &LockToken<T>,
+    buffer: impl AsMut<[InterfaceDescriptor]>,
+) -> Result<usize, Error<Owned>> {
     ModuleAPI::get_exported_interfaces(get_interface_glob(), buffer)
 }
 
@@ -249,9 +271,10 @@ pub fn get_exported_interfaces(
 ///
 /// Module handle on success, error otherwise.
 #[inline]
-pub fn get_exported_interface_handle(
+pub fn get_exported_interface_handle<'tok, T>(
+    _token: &'tok LockToken<T>,
     interface: &InterfaceDescriptor,
-) -> Result<Module<'static, BorrowImmutable<'_>>, Error> {
+) -> Result<Module<'static, BorrowImmutable<'tok>>, Error<Owned>> {
     ModuleAPI::get_exported_interface_handle(get_interface_glob(), interface)
 }
 
@@ -265,7 +288,7 @@ pub fn get_exported_interface_handle(
 ///
 /// The handle remains invalid until it's linked with [link_module].
 #[inline]
-pub unsafe fn create_module_handle() -> Module<'static, Owned> {
+pub unsafe fn create_module_handle<T>(_token: &mut LockToken<T>) -> Module<'static, Owned> {
     ModuleAPI::create_module_handle(get_mut_interface())
 }
 
@@ -283,7 +306,10 @@ pub unsafe fn create_module_handle() -> Module<'static, Owned> {
 ///
 /// Removing the handle does not unload the module.
 #[inline]
-pub unsafe fn remove_module_handle(module: Module<'_, Owned>) -> Result<(), Error> {
+pub unsafe fn remove_module_handle<T>(
+    _token: &mut LockToken<T>,
+    module: Module<'_, Owned>,
+) -> Result<(), Error<Owned>> {
     ModuleAPI::remove_module_handle(get_mut_interface(), module)
 }
 
@@ -301,11 +327,12 @@ pub unsafe fn remove_module_handle(module: Module<'_, Owned>) -> Result<(), Erro
 ///
 /// Incorrect usage can lead to dangling handles or use-after-free errors.
 #[inline]
-pub unsafe fn link_module<'module, 'loader, O, LO, IO>(
+pub unsafe fn link_module<'module, 'loader, O, LO, IO, T>(
+    _token: &mut LockToken<T>,
     module: &Module<'module, O>,
     loader: &Loader<'loader, LO>,
     internal: &InternalModule<IO>,
-) -> Result<(), Error>
+) -> Result<(), Error<Owned>>
 where
     'loader: 'module,
     O: MutableAccessIdentifier,
@@ -325,7 +352,10 @@ where
 ///
 /// Internal handle on success, error otherwise.
 #[inline]
-pub fn get_internal_module_handle<O>(module: &Module<'_, O>) -> Result<InternalModule<O>, Error>
+pub fn get_internal_module_handle<O, T>(
+    _token: &LockToken<T>,
+    module: &Module<'_, O>,
+) -> Result<InternalModule<O>, Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
 {
@@ -343,10 +373,11 @@ where
 ///
 /// Module handle on success, error otherwise.
 #[inline]
-pub fn add_module<O>(
+pub fn add_module<O, T>(
+    _token: &mut LockToken<T>,
     loader: &Loader<'static, O>,
-    path: &impl AsRef<Path>,
-) -> Result<Module<'static, Owned>, Error>
+    path: impl AsRef<Path>,
+) -> Result<Module<'static, Owned>, Error<Owned>>
 where
     O: MutableAccessIdentifier,
 {
@@ -363,7 +394,10 @@ where
 ///
 /// Error on failure.
 #[inline]
-pub fn remove_module(module: Module<'_, Owned>) -> Result<(), Error> {
+pub fn remove_module<T>(
+    _token: &mut LockToken<T>,
+    module: Module<'_, Owned>,
+) -> Result<(), Error<Owned>> {
     ModuleAPI::remove_module(get_mut_interface(), module)
 }
 
@@ -378,7 +412,7 @@ pub fn remove_module(module: Module<'_, Owned>) -> Result<(), Error> {
 ///
 /// Error on failure.
 #[inline]
-pub fn load<O>(module: &mut Module<'_, O>) -> Result<(), Error>
+pub fn load<O, T>(_token: &mut LockToken<T>, module: &mut Module<'_, O>) -> Result<(), Error<Owned>>
 where
     O: MutableAccessIdentifier,
 {
@@ -395,7 +429,10 @@ where
 ///
 /// Error on failure.
 #[inline]
-pub fn unload<O>(module: &mut Module<'_, O>) -> Result<(), Error>
+pub fn unload<O, T>(
+    _token: &mut LockToken<T>,
+    module: &mut Module<'_, O>,
+) -> Result<(), Error<Owned>>
 where
     O: MutableAccessIdentifier,
 {
@@ -413,7 +450,10 @@ where
 ///
 /// Error on failure.
 #[inline]
-pub fn initialize<O>(module: &mut Module<'_, O>) -> Result<(), Error>
+pub fn initialize<O, T>(
+    _token: &mut LockToken<T>,
+    module: &mut Module<'_, O>,
+) -> Result<(), Error<Owned>>
 where
     O: MutableAccessIdentifier,
 {
@@ -434,7 +474,10 @@ where
 ///
 /// Error on failure.
 #[inline]
-pub fn terminate<O>(module: &mut Module<'_, O>) -> Result<(), Error>
+pub fn terminate<O, T>(
+    _token: &mut LockToken<T>,
+    module: &mut Module<'_, O>,
+) -> Result<(), Error<Owned>>
 where
     O: MutableAccessIdentifier,
 {
@@ -451,10 +494,11 @@ where
 ///
 /// Error on failure.
 #[inline]
-pub fn add_dependency<O>(
+pub fn add_dependency<O, T>(
+    _token: &mut LockToken<T>,
     module: &mut Module<'_, O>,
     interface: &InterfaceDescriptor,
-) -> Result<(), Error>
+) -> Result<(), Error<Owned>>
 where
     O: MutableAccessIdentifier,
 {
@@ -471,10 +515,11 @@ where
 ///
 /// Error on failure.
 #[inline]
-pub fn remove_dependency<O>(
+pub fn remove_dependency<O, T>(
+    _token: &mut LockToken<T>,
     module: &mut Module<'_, O>,
     interface: &InterfaceDescriptor,
-) -> Result<(), Error>
+) -> Result<(), Error<Owned>>
 where
     O: MutableAccessIdentifier,
 {
@@ -492,10 +537,11 @@ where
 ///
 /// Error on failure.
 #[inline]
-pub fn export_interface<O>(
+pub fn export_interface<O, T>(
+    _token: &mut LockToken<T>,
     module: &Module<'_, O>,
     interface: &InterfaceDescriptor,
-) -> Result<(), Error>
+) -> Result<(), Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
 {
@@ -512,9 +558,10 @@ where
 ///
 /// Load dependencies on success, error otherwise.
 #[inline]
-pub fn get_load_dependencies<'module, O>(
+pub fn get_load_dependencies<'module, O, T>(
+    _token: &LockToken<T>,
     module: &Module<'module, O>,
-) -> Result<&'module [InterfaceDescriptor], Error>
+) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
 {
@@ -531,9 +578,10 @@ where
 ///
 /// Runtime dependencies on success, error otherwise.
 #[inline]
-pub fn get_runtime_dependencies<'module, O>(
+pub fn get_runtime_dependencies<'module, O, T>(
+    _token: &LockToken<T>,
     module: &Module<'module, O>,
-) -> Result<&'module [InterfaceDescriptor], Error>
+) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
 {
@@ -550,9 +598,10 @@ where
 ///
 /// Exportable interfaces on success, error otherwise.
 #[inline]
-pub fn get_exportable_interfaces<'module, O>(
+pub fn get_exportable_interfaces<'module, O, T>(
+    _token: &LockToken<T>,
     module: &Module<'module, O>,
-) -> Result<&'module [InterfaceDescriptor], Error>
+) -> Result<&'module [InterfaceDescriptor], Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
 {
@@ -569,7 +618,10 @@ where
 ///
 /// Module status on success, error otherwise.
 #[inline]
-pub fn fetch_status<O>(module: &Module<'_, O>) -> Result<ModuleStatus, Error>
+pub fn fetch_status<O, T>(
+    _token: &LockToken<T>,
+    module: &Module<'_, O>,
+) -> Result<ModuleStatus, Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
 {
@@ -586,9 +638,10 @@ where
 ///
 /// Module path on success, error otherwise.
 #[inline]
-pub fn get_module_path<'module, O>(
+pub fn get_module_path<'module, O, T>(
+    _token: &LockToken<T>,
     module: &Module<'module, O>,
-) -> Result<&'module [OSPathChar], Error>
+) -> Result<&'module [OSPathChar], Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
 {
@@ -605,9 +658,10 @@ where
 ///
 /// Module info on success, error otherwise.
 #[inline]
-pub fn get_module_info<'module, O>(
+pub fn get_module_info<'module, O, T>(
+    _token: &LockToken<T>,
     module: &Module<'module, O>,
-) -> Result<&'module ModuleInfo, Error>
+) -> Result<&'module ModuleInfo, Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
 {
@@ -625,11 +679,12 @@ where
 ///
 /// Interface on success, error otherwise.
 #[inline]
-pub fn get_interface<'module, O, T>(
+pub fn get_interface<'module, O, L, T>(
+    _token: &LockToken<L>,
     module: &'module Module<'_, O>,
     interface: &InterfaceDescriptor,
     caster: impl FnOnce(crate::ffi::module::Interface) -> T,
-) -> Result<Interface<'module, T>, Error>
+) -> Result<Interface<'module, T>, Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
 {

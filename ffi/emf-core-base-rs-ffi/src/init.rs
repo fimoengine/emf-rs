@@ -1,4 +1,5 @@
-use crate::collections::{ConstSpan, NonNullConst};
+use crate::collections::{ConstSpan, NonNullConst, Optional, Result};
+use crate::errors::StaticError;
 use crate::module::{api as mod_api, InterfaceDescriptor, InterfaceName};
 use crate::sys::api as sys_api;
 use crate::version::{
@@ -35,29 +36,29 @@ impl CBaseLoader for CBaseInterface {
         base_module: Option<NonNull<CBase>>,
         get_function_fn: sys_api::GetFunctionFn,
     ) -> NonNullConst<Self::Interface> {
-        let panic_fn: sys_api::PanicFn =
-            match get_function_fn(base_module, FnId::SysPanic).to_option() {
-                None => panic!("Unable to fetch the interface"),
-                Some(func) => std::mem::transmute(func),
-            };
+        let panic_fn: sys_api::PanicFn = match get_function_fn(base_module, FnId::SysPanic) {
+            Optional::None => panic!("Unable to fetch the interface"),
+            Optional::Some(func) => std::mem::transmute(func),
+        };
 
         let get_exported_interface_handle_fn: mod_api::GetExportedInterfaceHandleFn =
-            match get_function_fn(base_module, FnId::ModuleGetExportedInterfaceHandle).to_option() {
-                None => {
-                    let error = b"Could not fetch the function pointer to `FnId::ModuleGetExportedInterfaceHandle`\0";
-                    panic_fn(base_module, Some(NonNullConst::from(error)))
+            match get_function_fn(base_module, FnId::ModuleGetExportedInterfaceHandle) {
+                Optional::None => {
+                    let error = From::from(StaticError::new("Could not fetch the function pointer to `FnId::ModuleGetExportedInterfaceHandle."));
+                    panic_fn(base_module, Optional::Some(error))
                 }
-                Some(func) => std::mem::transmute(func),
+                Optional::Some(func) => std::mem::transmute(func),
             };
 
         let get_interface_fn: mod_api::GetInterfaceFn =
-            match get_function_fn(base_module, FnId::ModuleGetInterface).to_option() {
-                None => {
-                    let error =
-                        b"Could not fetch the function pointer to `FnId::ModuleGetInterface`\0";
-                    panic_fn(base_module, Some(NonNullConst::from(error)))
+            match get_function_fn(base_module, FnId::ModuleGetInterface) {
+                Optional::None => {
+                    let error = From::from(StaticError::new(
+                        "Could not fetch the function pointer to `FnId::ModuleGetInterface.",
+                    ));
+                    panic_fn(base_module, Optional::Some(error))
                 }
-                Some(func) => std::mem::transmute(func),
+                Optional::Some(func) => std::mem::transmute(func),
             };
 
         let cbase_interface_desc = InterfaceDescriptor {
@@ -76,28 +77,18 @@ impl CBaseLoader for CBaseInterface {
         let module_handle = match get_exported_interface_handle_fn(
             base_module,
             NonNullConst::from(&cbase_interface_desc),
-        )
-        .to_result()
-        {
-            Ok(handle) => handle,
-            Err(_) => {
-                let error = b"Could not fetch the handle to the interface module.\0";
-                panic_fn(base_module, Some(NonNullConst::from(error)))
-            }
+        ) {
+            Result::Ok(handle) => handle,
+            Result::Err(e) => panic_fn(base_module, Optional::Some(e)),
         };
 
         match get_interface_fn(
             base_module,
             module_handle,
             NonNullConst::from(&cbase_interface_desc),
-        )
-        .to_result()
-        {
-            Ok(interface) => NonNullConst::from(interface.interface).cast(),
-            Err(_) => {
-                let error = b"Could not fetch the interface from the module.\0";
-                panic_fn(base_module, Some(NonNullConst::from(error)))
-            }
+        ) {
+            Result::Ok(interface) => NonNullConst::from(interface.interface).cast(),
+            Result::Err(e) => panic_fn(base_module, Optional::Some(e)),
         }
     }
 }

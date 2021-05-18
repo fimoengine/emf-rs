@@ -49,13 +49,13 @@ pub mod api;
 pub const VERSION_MAJOR: i32 = 0;
 
 /// Minor version of the targeted version.
-pub const VERSION_MINOR: i32 = 1;
+pub const VERSION_MINOR: i32 = 2;
 
 /// Patch version of the targeted version.
 pub const VERSION_PATCH: i32 = 0;
 
 /// Release type of the targeted version.
-pub const VERSION_RELEASE_TYPE: ReleaseType = ReleaseType::Stable;
+pub const VERSION_RELEASE_TYPE: ReleaseType = ReleaseType::Unstable;
 
 /// Release number of the targeted version.
 pub const VERSION_RELEASE_NUMBER: i8 = 0;
@@ -64,7 +64,17 @@ pub const VERSION_RELEASE_NUMBER: i8 = 0;
 pub const VERSION_BUILD: i64 = 0;
 
 /// Version string of the targeted version.
-pub const VERSION_STRING: &str = "0.1.0";
+pub const VERSION_STRING: &str = "0.2.0-unstable.0";
+
+/// Short version.
+pub const VERSION: Version = Version {
+    major: VERSION_MAJOR,
+    minor: VERSION_MINOR,
+    patch: VERSION_PATCH,
+    build: VERSION_BUILD,
+    release_number: VERSION_RELEASE_NUMBER,
+    release_type: VERSION_RELEASE_TYPE,
+};
 
 /// Errors of the version api.
 #[repr(i8)]

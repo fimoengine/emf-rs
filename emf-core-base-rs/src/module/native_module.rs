@@ -5,12 +5,13 @@ use crate::ffi::module::native_module::{
     NativeModuleInterface as NativeModuleInterfaceFFI,
 };
 use crate::ffi::CBaseBinding;
-use crate::module::{Error, Interface, InterfaceDescriptor, Module, ModuleInfo};
+use crate::module::{Interface, InterfaceDescriptor, Module, ModuleInfo};
 use crate::ownership::{
     AccessIdentifier, BorrowImmutable, BorrowMutable, ImmutableAccessIdentifier,
     MutableAccessIdentifier, Owned,
 };
 use crate::CBaseInterfaceInfo;
+use crate::Error;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
@@ -149,7 +150,7 @@ where
         &mut self,
         module: &Module<'_, MO>,
         interface: &impl CBaseInterfaceInfo,
-    ) -> Result<NativeModuleInstance<'a, Owned>, Error>
+    ) -> Result<NativeModuleInstance<'a, Owned>, Error<Owned>>
     where
         MO: AccessIdentifier,
     {
@@ -163,7 +164,7 @@ where
             .as_mut()
             .load(module.as_handle(), interface_handle, has_fn_fn, get_fn_fn)
             .map_or_else(
-                |e| Err(Error::FFIError(e)),
+                |e| Err(Error::from(e)),
                 |v| Ok(NativeModuleInstance::new(v)),
             )
     }
@@ -187,13 +188,13 @@ where
     pub unsafe fn unload(
         &mut self,
         instance: NativeModuleInstance<'_, Owned>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error<Owned>> {
         self._interface
             .into_mut()
             .as_mut()
             .unload(instance.as_handle())
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |_v| Ok(()))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
     }
 
     /// Initializes the module.
@@ -215,13 +216,13 @@ where
     pub unsafe fn initialize(
         &mut self,
         instance: &mut NativeModuleInstance<'_, Owned>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error<Owned>> {
         self._interface
             .into_mut()
             .as_mut()
             .initialize(instance.as_handle())
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |_v| Ok(()))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
     }
 
     /// Terminates the module.
@@ -243,13 +244,13 @@ where
     pub unsafe fn terminate(
         &mut self,
         instance: &mut NativeModuleInstance<'_, Owned>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error<Owned>> {
         self._interface
             .into_mut()
             .as_mut()
             .terminate(instance.as_handle())
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |_v| Ok(()))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
     }
 }
 
@@ -278,18 +279,15 @@ where
         instance: &'instance NativeModuleInstance<'instance, IO>,
         interface: &InterfaceDescriptor,
         caster: impl FnOnce(crate::ffi::module::Interface) -> T,
-    ) -> Result<Interface<'instance, T>, Error>
+    ) -> Result<Interface<'instance, T>, Error<Owned>>
     where
         IO: ImmutableAccessIdentifier,
     {
         self._interface
             .as_ref()
             .get_interface(instance.as_handle(), NonNullConst::from(interface))
-            .to_result()
-            .map_or_else(
-                |e| Err(Error::FFIError(e)),
-                |v| Ok(Interface::new(caster(v))),
-            )
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |v| Ok(Interface::new(caster(v))))
     }
 
     /// Fetches the module info of the module.
@@ -311,15 +309,15 @@ where
     pub unsafe fn get_module_info<'instance, IO>(
         &self,
         instance: &'instance NativeModuleInstance<'instance, IO>,
-    ) -> Result<&'instance ModuleInfo, Error>
+    ) -> Result<&'instance ModuleInfo, Error<Owned>>
     where
         IO: ImmutableAccessIdentifier,
     {
         self._interface
             .as_ref()
             .get_module_info(instance.as_handle())
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |v| Ok(&*v.as_ptr()))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |v| Ok(&*v.as_ptr()))
     }
 
     /// Fetches the load dependencies of the module.
@@ -362,16 +360,16 @@ where
     pub unsafe fn get_runtime_dependencies<'instance, IO>(
         &self,
         instance: &'instance NativeModuleInstance<'instance, IO>,
-    ) -> Result<&'instance [InterfaceDescriptor], Error>
+    ) -> Result<&'instance [InterfaceDescriptor], Error<Owned>>
     where
         IO: ImmutableAccessIdentifier,
     {
         self._interface
             .as_ref()
             .get_runtime_dependencies(instance.as_handle())
-            .to_result()
+            .into_rust()
             .map_or_else(
-                |e| Err(Error::FFIError(e)),
+                |e| Err(Error::from(e)),
                 |v| {
                     if v.is_empty() {
                         Ok(<&[_]>::default())
@@ -401,16 +399,16 @@ where
     pub unsafe fn get_exportable_interfaces<'instance, IO>(
         &self,
         instance: &'instance NativeModuleInstance<'instance, IO>,
-    ) -> Result<&'instance [InterfaceDescriptor], Error>
+    ) -> Result<&'instance [InterfaceDescriptor], Error<Owned>>
     where
         IO: ImmutableAccessIdentifier,
     {
         self._interface
             .as_ref()
             .get_exportable_interfaces(instance.as_handle())
-            .to_result()
+            .into_rust()
             .map_or_else(
-                |e| Err(Error::FFIError(e)),
+                |e| Err(Error::from(e)),
                 |v| {
                     if v.is_empty() {
                         Ok(<&[_]>::default())

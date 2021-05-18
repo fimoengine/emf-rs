@@ -19,5 +19,4 @@ unwind_internal = ["extensions", "emf-core-base-rs-ffi/unwind_internal"]
 extensions_all = ["unwind_internal", "emf-core-base-rs-ffi/extensions_all"]
 
 [dependencies]
-backtrace = "0.3.56"
 emf-core-base-rs-ffi = { version = "0.2.0-unstable.0", path = "../ffi/emf-core-base-rs-ffi" }

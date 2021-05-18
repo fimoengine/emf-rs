@@ -8,8 +8,9 @@
 //! use std::path::Path;
 //! use std::ffi::CString;
 //!
-//! # use emf_core_base_rs::library::Error;
-//! # fn main() -> Result<(), Error> {
+//! # use emf_core_base_rs::Error;
+//! # use emf_core_base_rs::ownership::Owned;
+//! # fn main() -> Result<(), Error<Owned>> {
 //! let mut lock = LockToken::<Unlock>::lock();
 //!
 //! let library_path = Path::new("path to my library");
@@ -32,8 +33,9 @@ use crate::ffi::collections::NonNullConst;
 use crate::ffi::CBaseFn;
 use crate::global::{get_interface, get_mut_interface, LockToken};
 use crate::library::library_loader::{LibraryLoader, LibraryLoaderABICompat, LibraryLoaderAPI};
-use crate::library::{Error, InternalLibrary, Library, LibraryAPI, LibraryType, Loader, Symbol};
+use crate::library::{InternalLibrary, Library, LibraryAPI, LibraryType, Loader, Symbol};
 use crate::ownership::{BorrowMutable, ImmutableAccessIdentifier, MutableAccessIdentifier, Owned};
+use crate::Error;
 use std::ffi::{c_void, CStr};
 use std::path::Path;
 
@@ -53,8 +55,8 @@ use std::path::Path;
 pub fn register_loader<'loader, L, LT, T>(
     _token: &mut LockToken<L>,
     loader: &'loader LT,
-    lib_type: &impl AsRef<str>,
-) -> Result<Loader<'static, Owned>, Error>
+    lib_type: impl AsRef<str>,
+) -> Result<Loader<'static, Owned>, Error<Owned>>
 where
     T: LibraryLoaderAPI<'static>,
     LibraryLoader<T, Owned>: From<&'loader LT>,
@@ -75,7 +77,7 @@ where
 pub fn unregister_loader<L>(
     _token: &mut LockToken<L>,
     loader: Loader<'_, Owned>,
-) -> Result<(), Error> {
+) -> Result<(), Error<Owned>> {
     LibraryAPI::unregister_loader(get_mut_interface(), loader)
 }
 
@@ -92,7 +94,7 @@ pub fn unregister_loader<L>(
 pub fn get_loader_interface<'loader, L, O, T>(
     _token: &mut LockToken<L>,
     loader: &Loader<'loader, O>,
-) -> Result<LibraryLoader<T, O>, Error>
+) -> Result<LibraryLoader<T, O>, Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
     T: LibraryLoaderAPI<'loader> + LibraryLoaderABICompat,
@@ -112,8 +114,8 @@ where
 #[inline]
 pub fn get_loader_handle_from_type<'tok, L>(
     _token: &'tok LockToken<L>,
-    lib_type: &impl AsRef<str>,
-) -> Result<Loader<'static, BorrowMutable<'tok>>, Error> {
+    lib_type: impl AsRef<str>,
+) -> Result<Loader<'static, BorrowMutable<'tok>>, Error<Owned>> {
     LibraryAPI::get_loader_handle_from_type(get_interface(), lib_type)
 }
 
@@ -130,7 +132,7 @@ pub fn get_loader_handle_from_type<'tok, L>(
 pub fn get_loader_handle_from_library<'l, 'library, L, O>(
     _token: &'l LockToken<L>,
     library: &Library<'library, O>,
-) -> Result<Loader<'library, BorrowMutable<'l>>, Error>
+) -> Result<Loader<'library, BorrowMutable<'l>>, Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
 {
@@ -166,7 +168,10 @@ where
 ///
 /// [true] if the type exists, [false] otherwise.
 #[inline]
-pub fn type_exists<L>(_token: &LockToken<L>, lib_type: &impl AsRef<str>) -> Result<bool, Error> {
+pub fn type_exists<L>(
+    _token: &LockToken<L>,
+    lib_type: impl AsRef<str>,
+) -> Result<bool, Error<Owned>> {
     LibraryAPI::type_exists(get_interface(), lib_type)
 }
 
@@ -183,7 +188,7 @@ pub fn type_exists<L>(_token: &LockToken<L>, lib_type: &impl AsRef<str>) -> Resu
 pub fn get_library_types<L>(
     _token: &LockToken<L>,
     buffer: impl AsMut<[LibraryType]>,
-) -> Result<usize, Error> {
+) -> Result<usize, Error<Owned>> {
     LibraryAPI::get_library_types(get_interface(), buffer)
 }
 
@@ -218,7 +223,7 @@ pub unsafe fn create_library_handle<L>(_token: &mut LockToken<L>) -> Library<'st
 pub unsafe fn remove_library_handle<L>(
     _token: &mut LockToken<L>,
     library: Library<'_, Owned>,
-) -> Result<(), Error> {
+) -> Result<(), Error<Owned>> {
     LibraryAPI::remove_library_handle(get_mut_interface(), library)
 }
 
@@ -244,7 +249,7 @@ pub unsafe fn link_library<'library, 'loader, L, O, LO, IO>(
     library: &Library<'library, O>,
     loader: &Loader<'loader, LO>,
     internal: &InternalLibrary<IO>,
-) -> Result<(), Error>
+) -> Result<(), Error<Owned>>
 where
     'loader: 'library,
     O: MutableAccessIdentifier,
@@ -267,7 +272,7 @@ where
 pub fn get_internal_library_handle<'library, L, O>(
     _token: &LockToken<L>,
     library: &Library<'library, O>,
-) -> Result<InternalLibrary<O>, Error>
+) -> Result<InternalLibrary<O>, Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
 {
@@ -288,8 +293,8 @@ where
 pub fn load<L, O>(
     _token: &mut LockToken<L>,
     loader: &Loader<'static, O>,
-    path: &impl AsRef<Path>,
-) -> Result<Library<'static, Owned>, Error>
+    path: impl AsRef<Path>,
+) -> Result<Library<'static, Owned>, Error<Owned>>
 where
     O: MutableAccessIdentifier,
 {
@@ -306,7 +311,10 @@ where
 ///
 /// Error on failure.
 #[inline]
-pub fn unload<L>(_token: &mut LockToken<L>, library: Library<'_, Owned>) -> Result<(), Error> {
+pub fn unload<L>(
+    _token: &mut LockToken<L>,
+    library: Library<'_, Owned>,
+) -> Result<(), Error<Owned>> {
     LibraryAPI::unload(get_mut_interface(), library)
 }
 
@@ -328,9 +336,9 @@ pub fn unload<L>(_token: &mut LockToken<L>, library: Library<'_, Owned>) -> Resu
 pub fn get_data_symbol<'library, 'handle, L, O, U>(
     _token: &LockToken<L>,
     library: &'handle Library<'library, O>,
-    symbol: &impl AsRef<CStr>,
+    symbol: impl AsRef<CStr>,
     caster: impl FnOnce(NonNullConst<c_void>) -> &'library U,
-) -> Result<Symbol<'handle, &'library U>, Error>
+) -> Result<Symbol<'handle, &'library U>, Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
 {
@@ -355,9 +363,9 @@ where
 pub fn get_function_symbol<'library, 'handle, L, O, U>(
     _token: &LockToken<L>,
     library: &'handle Library<'library, O>,
-    symbol: &impl AsRef<CStr>,
+    symbol: impl AsRef<CStr>,
     caster: impl FnOnce(CBaseFn) -> U,
-) -> Result<Symbol<'handle, U>, Error>
+) -> Result<Symbol<'handle, U>, Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
 {
