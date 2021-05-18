@@ -5,7 +5,59 @@ use std::fmt::{Debug, Display, Formatter};
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 
-pub use crate::ffi::errors::ErrorInfo;
+/// Error info.
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+pub struct ErrorInfo {
+    info: crate::ffi::errors::ErrorInfo,
+}
+
+impl ErrorInfo {
+    /// Constructs a new instance.
+    #[inline]
+    pub fn new(info: crate::ffi::errors::ErrorInfo) -> Self {
+        Self { info }
+    }
+
+    /// Gets the internal info.
+    #[inline]
+    pub fn into_inner(self) -> crate::ffi::errors::ErrorInfo {
+        self.info
+    }
+
+    /// Fetches a reference to the error string.
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        self.info.as_ref()
+    }
+}
+
+impl Debug for ErrorInfo {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(&self.info, f)
+    }
+}
+
+impl Display for ErrorInfo {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&self.info, f)
+    }
+}
+
+impl AsRef<str> for ErrorInfo {
+    #[inline]
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl From<crate::ffi::errors::ErrorInfo> for ErrorInfo {
+    #[inline]
+    fn from(val: crate::ffi::errors::ErrorInfo) -> Self {
+        Self::new(val)
+    }
+}
 
 /// An error type.
 #[derive(Ord, PartialOrd, Eq, PartialEq, Hash)]
@@ -64,13 +116,13 @@ impl Error<Owned> {
     /// Display error info.
     #[inline]
     pub fn display_info(&self) -> ErrorInfo {
-        self._error.display_info()
+        ErrorInfo::new(self._error.display_info())
     }
 
     /// Display error info.
     #[inline]
     pub fn debug_info(&self) -> ErrorInfo {
-        self._error.debug_info()
+        ErrorInfo::new(self._error.debug_info())
     }
 }
 
@@ -121,12 +173,12 @@ impl<'a> Error<BorrowImmutable<'a>> {
     /// Display error info.
     #[inline]
     pub fn display_info(&self) -> ErrorInfo {
-        self._error.display_info()
+        ErrorInfo::new(self._error.display_info())
     }
 
     /// Display error info.
     #[inline]
     pub fn debug_info(&self) -> ErrorInfo {
-        self._error.debug_info()
+        ErrorInfo::new(self._error.debug_info())
     }
 }
