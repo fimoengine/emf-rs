@@ -1,7 +1,9 @@
 //! Global version api.
 use crate::ffi::version::Version;
 use crate::global::get_interface;
-use crate::version::{Error, ReleaseType, VersionAPI};
+use crate::ownership::Owned;
+use crate::version::{ReleaseType, VersionAPI};
+use crate::Error;
 use std::cmp::Ordering;
 
 /// Constructs a new version.
@@ -80,7 +82,7 @@ pub fn new_full(
 ///
 /// Constructed version.
 #[inline]
-pub fn from_string(buffer: impl AsRef<str>) -> Result<Version, Error> {
+pub fn from_string(buffer: impl AsRef<str>) -> Result<Version, Error<Owned>> {
     VersionAPI::from_string(get_interface(), buffer)
 }
 
@@ -124,7 +126,7 @@ pub fn string_length_full(version: &Version) -> usize {
 ///
 /// Number of written characters on success, error otherwise.
 #[inline]
-pub fn as_string_short(version: &Version, buffer: impl AsMut<str>) -> Result<usize, Error> {
+pub fn as_string_short(version: &Version, buffer: impl AsMut<str>) -> Result<usize, Error<Owned>> {
     VersionAPI::as_string_short(get_interface(), version, buffer)
 }
 
@@ -138,7 +140,7 @@ pub fn as_string_short(version: &Version, buffer: impl AsMut<str>) -> Result<usi
 ///
 /// Number of written characters on success, error otherwise.
 #[inline]
-pub fn as_string_long(version: &Version, buffer: impl AsMut<str>) -> Result<usize, Error> {
+pub fn as_string_long(version: &Version, buffer: impl AsMut<str>) -> Result<usize, Error<Owned>> {
     VersionAPI::as_string_long(get_interface(), version, buffer)
 }
 
@@ -152,7 +154,7 @@ pub fn as_string_long(version: &Version, buffer: impl AsMut<str>) -> Result<usiz
 ///
 /// Number of written characters on success, error otherwise.
 #[inline]
-pub fn as_string_full(version: &Version, buffer: impl AsMut<str>) -> Result<usize, Error> {
+pub fn as_string_full(version: &Version, buffer: impl AsMut<str>) -> Result<usize, Error<Owned>> {
     VersionAPI::as_string_full(get_interface(), version, buffer)
 }
 

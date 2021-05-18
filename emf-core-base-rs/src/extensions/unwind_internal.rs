@@ -1,16 +1,21 @@
 //! The `unwind_internal` extension.
 use crate::ffi::collections::NonNullConst;
+use crate::ffi::errors::StaticError;
 use crate::ffi::extensions::unwind_internal;
 use crate::ffi::extensions::unwind_internal::{
     Context, PanicFn, ShutdownFn, UnwindInternalBinding,
 };
+use crate::ffi::CBaseBinding;
+use crate::ownership::Owned;
 use crate::sys::SysAPIMin;
-use crate::CBaseAPI;
+use crate::CBaseInterfaceInfo;
+use crate::{CBaseAPI, Error};
 use std::any::Any;
 use std::marker::PhantomData;
 use std::panic::UnwindSafe;
 use std::ptr::NonNull;
 
+pub use default_context::DefaultContext;
 pub use unwind_internal::UNWIND_INTERNAL_INTERFACE_NAME;
 pub use unwind_internal::UNWIND_INTERNAL_VERSION_BUILD;
 pub use unwind_internal::UNWIND_INTERNAL_VERSION_MAJOR;
@@ -20,18 +25,13 @@ pub use unwind_internal::UNWIND_INTERNAL_VERSION_RELEASE_NUMBER;
 pub use unwind_internal::UNWIND_INTERNAL_VERSION_RELEASE_TYPE;
 pub use unwind_internal::UNWIND_INTERNAL_VERSION_STRING;
 
-use crate::ffi::CBaseBinding;
-use crate::CBaseInterfaceInfo;
-pub use default_context::DefaultContext;
-use std::ffi::CStr;
-
 /// Possible signals
 #[derive(Debug)]
 pub enum Signal {
     /// A signal that requests the termination of the interface.
     Shutdown,
     /// A panic originating from the interface's `panic()` function.
-    Panic(Box<dyn Any + Send + 'static>),
+    Panic(Option<Error<Owned>>),
     /// A panic originating from an unknown source, including [panic!()].
     Other(Box<dyn Any + Send + 'static>),
 }
@@ -97,11 +97,9 @@ impl<'interface> UnwindInternalAPI<'interface> for UnwindInternalInterface<'inte
                 _phantom: PhantomData,
             }
         } else {
-            let error = unsafe {
-                CStr::from_bytes_with_nul_unchecked(
-                    b"Could not fetch the `unwind_internal` interface!\n",
-                )
-            };
+            let error = Error::from(StaticError::new(
+                "Could not fetch the `unwind_internal` interface!",
+            ));
             SysAPIMin::panic(interface, Some(error))
         }
     }
@@ -220,15 +218,29 @@ pub mod default_context {
     use crate::extensions::unwind_internal::{
         Signal, UnwindInternalAPI, UnwindInternalContextAPI, UnwindInternalContextRef,
     };
-    use crate::ffi::collections::NonNullConst;
+    use crate::ffi::collections::Optional;
+    use crate::ffi::errors::{Error, SimpleError};
     use crate::ffi::extensions::unwind_internal::Context;
     use crate::ffi::TypeWrapper;
     use crate::CBaseAPI;
-    use backtrace::Backtrace;
-    use std::cell::UnsafeCell;
-    use std::ffi::{CStr, CString};
-    use std::panic::{AssertUnwindSafe, PanicInfo, UnwindSafe};
+    use std::any::Any;
+    use std::fmt::{Debug, Display, Formatter};
+    use std::panic::{AssertUnwindSafe, UnwindSafe};
     use std::ptr::NonNull;
+
+    /// An unknown error.
+    #[derive(Debug)]
+    struct UnknownError {
+        error: Box<dyn Any + Send>,
+    }
+
+    impl Display for UnknownError {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+            Debug::fmt(&*self.error, f)
+        }
+    }
+
+    impl std::error::Error for UnknownError {}
 
     /// Default context.
     #[derive(Debug)]
@@ -242,47 +254,17 @@ pub mod default_context {
     #[derive(Debug)]
     pub struct PanicSignal {
         /// Error message of the panic.
-        pub error: UnsafeCell<Option<CString>>,
+        pub error: Option<Error>,
     }
 
     extern "C-unwind" fn shutdown_fn(_context: Option<NonNull<Context>>) -> ! {
         std::panic::panic_any(ShutdownSignal {})
     }
 
-    extern "C-unwind" fn panic_fn(
-        _context: Option<NonNull<Context>>,
-        err: Option<NonNullConst<u8>>,
-    ) -> ! {
-        let error = {
-            if let Some(err) = err {
-                let err_str = unsafe { CStr::from_ptr(err.cast().as_ptr()) };
-                PanicSignal {
-                    error: UnsafeCell::new(Some(err_str.to_owned())),
-                }
-            } else {
-                PanicSignal {
-                    error: UnsafeCell::new(None),
-                }
-            }
-        };
-        std::panic::panic_any(error)
-    }
-
-    fn panic_hook(info: &PanicInfo<'_>) {
-        let backtrace = Backtrace::new();
-        if let Some(payload) = info.payload().downcast_ref::<PanicSignal>() {
-            let error = unsafe { &mut *payload.error.get() };
-            if let Some(error) = error {
-                let mut error_vec = Vec::from(error.as_bytes());
-                error_vec.extend_from_slice("\n\nBacktrace:\n".as_bytes());
-                error_vec.extend_from_slice(format!("{:?}", backtrace).as_bytes());
-
-                *error = CString::new(error_vec).unwrap();
-            } else {
-                let trace = CString::new(format!("Backtrace:\n{:?}", backtrace)).unwrap();
-                *error = Some(trace);
-            }
-        }
+    extern "C-unwind" fn panic_fn(_context: Option<NonNull<Context>>, err: Optional<Error>) -> ! {
+        std::panic::panic_any(PanicSignal {
+            error: err.into_rust(),
+        })
     }
 
     impl Default for DefaultContext {
@@ -307,21 +289,10 @@ pub mod default_context {
                 Ok(v) => v,
                 Err(sig) => match sig {
                     Signal::Shutdown => interface.shutdown(),
-                    Signal::Panic(err) => {
-                        let error = err.downcast_ref::<PanicSignal>().unwrap();
-                        interface.panic(unsafe { (&*error.error.get()).as_ref() })
-                    }
-                    Signal::Other(err) => {
-                        if let Some(error) = err.downcast_ref::<&str>() {
-                            if let Ok(error) = CString::new(*error) {
-                                interface.panic(Some(error))
-                            }
-                        }
-                        let error = unsafe {
-                            CStr::from_bytes_with_nul_unchecked(b"Unknown error occurred!\0")
-                        };
-                        interface.panic(Some(error))
-                    }
+                    Signal::Panic(err) => interface.panic(err),
+                    Signal::Other(err) => interface.panic(Some(From::from(SimpleError::new(
+                        format!("Unknown error: {:?}", err),
+                    )))),
                 },
             }
         }
@@ -345,7 +316,7 @@ pub mod default_context {
             };
 
             extension.set_context(interface, Some(context));
-            std::panic::set_hook(Box::new(panic_hook));
+            std::panic::set_hook(Box::new(|_| {}));
 
             let result = std::panic::catch_unwind(AssertUnwindSafe(|| f(interface)));
 
@@ -356,7 +327,8 @@ pub mod default_context {
                 if e.is::<ShutdownSignal>() {
                     Signal::Shutdown
                 } else if e.is::<PanicSignal>() {
-                    Signal::Panic(e)
+                    let err = e.downcast::<PanicSignal>().unwrap();
+                    Signal::Panic(err.error.map(From::from))
                 } else {
                     Signal::Other(e)
                 }
@@ -367,14 +339,15 @@ pub mod default_context {
     #[cfg(test)]
     mod tests {
         use crate::extensions::unwind_internal::default_context::{
-            panic_fn, panic_hook, shutdown_fn, PanicSignal, ShutdownSignal,
+            panic_fn, shutdown_fn, PanicSignal, ShutdownSignal,
         };
-        use crate::ffi::collections::NonNullConst;
+        use crate::ffi::collections::Optional;
+        use crate::ffi::errors::StaticError;
 
         #[test]
         fn test_rust_panic() {
             let saved_panic_hook = std::panic::take_hook();
-            std::panic::set_hook(Box::new(panic_hook));
+            std::panic::set_hook(Box::new(|_| {}));
             let result = std::panic::catch_unwind(|| panic!("My panic message!"));
             std::panic::set_hook(saved_panic_hook);
 
@@ -387,7 +360,7 @@ pub mod default_context {
         #[test]
         fn test_ext_shutdown() {
             let saved_panic_hook = std::panic::take_hook();
-            std::panic::set_hook(Box::new(panic_hook));
+            std::panic::set_hook(Box::new(|_| {}));
             let result = std::panic::catch_unwind(|| shutdown_fn(None));
             std::panic::set_hook(saved_panic_hook);
 
@@ -399,9 +372,10 @@ pub mod default_context {
         #[test]
         fn test_ext_panic() {
             let saved_panic_hook = std::panic::take_hook();
-            std::panic::set_hook(Box::new(panic_hook));
+            std::panic::set_hook(Box::new(|_| {}));
             let result = std::panic::catch_unwind(|| {
-                panic_fn(None, Some(NonNullConst::from(b"My panic message!\0")))
+                let error = StaticError::new("My panic message!");
+                panic_fn(None, Optional::Some(From::from(error)))
             });
             std::panic::set_hook(saved_panic_hook);
 
@@ -409,29 +383,29 @@ pub mod default_context {
             let mut error = result.unwrap_err();
             assert_eq!(error.is::<PanicSignal>(), true);
             let signal = error.downcast_mut::<PanicSignal>().unwrap();
-            let error = signal.error.get_mut();
+            let error = signal.error.take();
             assert_eq!(error.is_some(), true);
+
             let error = error.as_ref().unwrap();
-            let error = error.to_str().unwrap();
-            print!("{}", error);
+            let error_info_dbg = error.debug_info();
+            let error_info_dis = error.display_info();
+            assert_eq!("\"My panic message!\"", error_info_dbg.as_ref());
+            assert_eq!("My panic message!", error_info_dis.as_ref());
         }
 
         #[test]
         fn test_ext_panic_empty() {
             let saved_panic_hook = std::panic::take_hook();
-            std::panic::set_hook(Box::new(panic_hook));
-            let result = std::panic::catch_unwind(|| panic_fn(None, None));
+            std::panic::set_hook(Box::new(|_| {}));
+            let result = std::panic::catch_unwind(|| panic_fn(None, Optional::None));
             std::panic::set_hook(saved_panic_hook);
 
             assert_eq!(result.is_err(), true);
             let mut error = result.unwrap_err();
             assert_eq!(error.is::<PanicSignal>(), true);
             let signal = error.downcast_mut::<PanicSignal>().unwrap();
-            let error = signal.error.get_mut();
-            assert_eq!(error.is_some(), true);
-            let error = error.as_ref().unwrap();
-            let error = error.to_str().unwrap();
-            print!("{}", error);
+            let error = signal.error.take();
+            assert_eq!(error.is_some(), false);
         }
     }
 }

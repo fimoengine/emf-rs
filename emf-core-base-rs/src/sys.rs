@@ -1,19 +1,19 @@
 //! Sys api.
 //!
 //! The sys api is exposed by the [SysAPI] trait.
-use crate::ffi::collections::NonNullConst;
 use crate::ffi::sys::api::SysBinding;
 use crate::ffi::Bool;
 use crate::fn_caster::FnCaster;
+use crate::ownership::Owned;
 use crate::sys::sync_handler::SyncHandlerAPI;
-use std::ffi::CStr;
+use crate::Error;
 
 pub mod sync_handler;
 
 /// Minimal sys api.
 pub trait SysAPIMin<'interface> {
     /// Execution of the program is stopped abruptly. The error may be logged.
-    fn panic(&self, error: Option<impl AsRef<CStr>>) -> !;
+    fn panic(&self, error: Option<Error<Owned>>) -> !;
 
     /// Checks if a function is implemented.
     ///
@@ -77,13 +77,8 @@ where
     T: SysBinding,
 {
     #[inline]
-    fn panic(&self, error: Option<impl AsRef<CStr>>) -> ! {
-        unsafe {
-            <T as SysBinding>::panic(
-                self,
-                error.map(|err| NonNullConst::from(err.as_ref().to_bytes_with_nul())),
-            )
-        }
+    fn panic(&self, error: Option<Error<Owned>>) -> ! {
+        unsafe { <T as SysBinding>::panic(self, From::from(error.map(|e| e.into_inner()))) }
     }
 
     #[inline]
@@ -101,7 +96,7 @@ where
     {
         unsafe {
             <T as SysBinding>::get_function(self, U::ID)
-                .to_option()
+                .into_rust()
                 .map(|func| caster.cast(func))
         }
     }

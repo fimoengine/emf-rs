@@ -1,11 +1,13 @@
 use crate::ffi::collections::{MutSpan, NonNullConst};
+use crate::ffi::errors::SimpleError;
 use crate::ffi::library::api::LibraryBinding;
 use crate::ffi::{Bool, CBaseFn};
 use crate::library::library_loader::{LibraryLoader, LibraryLoaderABICompat, LibraryLoaderAPI};
 use crate::library::{
-    Error, InternalLibrary, Library, LibraryType, Loader, Symbol, LOADER_TYPE_MAX_LENGTH,
+    InternalLibrary, Library, LibraryType, Loader, Symbol, LOADER_TYPE_MAX_LENGTH,
 };
 use crate::ownership::{BorrowMutable, ImmutableAccessIdentifier, MutableAccessIdentifier, Owned};
+use crate::Error;
 use crate::ToOsPathBuff;
 use std::ffi::{c_void, CStr};
 use std::path::Path;
@@ -28,8 +30,8 @@ pub trait LibraryAPI<'interface> {
     fn register_loader<'loader, LT, L>(
         &mut self,
         loader: &'loader LT,
-        lib_type: &impl AsRef<str>,
-    ) -> Result<Loader<'interface, Owned>, Error>
+        lib_type: impl AsRef<str>,
+    ) -> Result<Loader<'interface, Owned>, Error<Owned>>
     where
         L: LibraryLoaderAPI<'static>,
         LibraryLoader<L, Owned>: From<&'loader LT>;
@@ -43,7 +45,7 @@ pub trait LibraryAPI<'interface> {
     /// # Return
     ///
     /// Error on failure.
-    fn unregister_loader(&mut self, loader: Loader<'_, Owned>) -> Result<(), Error>;
+    fn unregister_loader(&mut self, loader: Loader<'_, Owned>) -> Result<(), Error<Owned>>;
 
     /// Fetches the interface of a library loader.
     ///
@@ -57,7 +59,7 @@ pub trait LibraryAPI<'interface> {
     fn get_loader_interface<'loader, O, L>(
         &mut self,
         loader: &Loader<'loader, O>,
-    ) -> Result<LibraryLoader<L, O>, Error>
+    ) -> Result<LibraryLoader<L, O>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
         L: LibraryLoaderAPI<'loader> + LibraryLoaderABICompat;
@@ -73,8 +75,8 @@ pub trait LibraryAPI<'interface> {
     /// Handle on success, error otherwise.
     fn get_loader_handle_from_type(
         &self,
-        lib_type: &impl AsRef<str>,
-    ) -> Result<Loader<'interface, BorrowMutable<'_>>, Error>;
+        lib_type: impl AsRef<str>,
+    ) -> Result<Loader<'interface, BorrowMutable<'_>>, Error<Owned>>;
 
     /// Fetches the loader handle linked with the library handle.
     ///
@@ -88,7 +90,7 @@ pub trait LibraryAPI<'interface> {
     fn get_loader_handle_from_library<'library, O>(
         &self,
         library: &Library<'library, O>,
-    ) -> Result<Loader<'library, BorrowMutable<'_>>, Error>
+    ) -> Result<Loader<'library, BorrowMutable<'_>>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier;
 
@@ -113,7 +115,7 @@ pub trait LibraryAPI<'interface> {
     /// # Return
     ///
     /// [true] if the type exists, [false] otherwise.
-    fn type_exists(&self, lib_type: &impl AsRef<str>) -> Result<bool, Error>;
+    fn type_exists(&self, lib_type: impl AsRef<str>) -> Result<bool, Error<Owned>>;
 
     /// Copies the strings of the registered library types into a buffer.
     ///
@@ -124,7 +126,7 @@ pub trait LibraryAPI<'interface> {
     /// # Return
     ///
     /// Number of written types on success, error otherwise.
-    fn get_library_types(&self, buffer: impl AsMut<[LibraryType]>) -> Result<usize, Error>;
+    fn get_library_types(&self, buffer: impl AsMut<[LibraryType]>) -> Result<usize, Error<Owned>>;
 
     /// Creates a new unlinked library handle.
     ///
@@ -150,7 +152,10 @@ pub trait LibraryAPI<'interface> {
     /// # Safety
     ///
     /// Removing the handle does not unload the library.
-    unsafe fn remove_library_handle(&mut self, library: Library<'_, Owned>) -> Result<(), Error>;
+    unsafe fn remove_library_handle(
+        &mut self,
+        library: Library<'_, Owned>,
+    ) -> Result<(), Error<Owned>>;
 
     /// Links a library handle to an internal library handle.
     ///
@@ -173,7 +178,7 @@ pub trait LibraryAPI<'interface> {
         library: &Library<'library, O>,
         loader: &Loader<'loader, LO>,
         internal: &InternalLibrary<IO>,
-    ) -> Result<(), Error>
+    ) -> Result<(), Error<Owned>>
     where
         'loader: 'library,
         O: MutableAccessIdentifier,
@@ -192,7 +197,7 @@ pub trait LibraryAPI<'interface> {
     fn get_internal_library_handle<'library, O>(
         &self,
         library: &Library<'library, O>,
-    ) -> Result<InternalLibrary<O>, Error>
+    ) -> Result<InternalLibrary<O>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier;
 
@@ -209,8 +214,8 @@ pub trait LibraryAPI<'interface> {
     fn load<O>(
         &mut self,
         loader: &Loader<'interface, O>,
-        path: &impl AsRef<Path>,
-    ) -> Result<Library<'interface, Owned>, Error>
+        path: impl AsRef<Path>,
+    ) -> Result<Library<'interface, Owned>, Error<Owned>>
     where
         O: MutableAccessIdentifier;
 
@@ -223,7 +228,7 @@ pub trait LibraryAPI<'interface> {
     /// # Return
     ///
     /// Error on failure.
-    fn unload(&mut self, library: Library<'_, Owned>) -> Result<(), Error>;
+    fn unload(&mut self, library: Library<'_, Owned>) -> Result<(), Error<Owned>>;
 
     /// Fetches a data symbol from a library.
     ///
@@ -242,9 +247,9 @@ pub trait LibraryAPI<'interface> {
     fn get_data_symbol<'library, 'handle, O, U>(
         &self,
         library: &'handle Library<'library, O>,
-        symbol: &impl AsRef<CStr>,
+        symbol: impl AsRef<CStr>,
         caster: impl FnOnce(NonNullConst<c_void>) -> &'library U,
-    ) -> Result<Symbol<'handle, &'library U>, Error>
+    ) -> Result<Symbol<'handle, &'library U>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier;
 
@@ -265,9 +270,9 @@ pub trait LibraryAPI<'interface> {
     fn get_function_symbol<'library, 'handle, O, U>(
         &self,
         library: &'handle Library<'library, O>,
-        symbol: &impl AsRef<CStr>,
+        symbol: impl AsRef<CStr>,
         caster: impl FnOnce(CBaseFn) -> U,
-    ) -> Result<Symbol<'handle, U>, Error>
+    ) -> Result<Symbol<'handle, U>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier;
 }
@@ -280,15 +285,18 @@ where
     fn register_loader<'loader, LT, L>(
         &mut self,
         loader: &'loader LT,
-        lib_type: &impl AsRef<str>,
-    ) -> Result<Loader<'interface, Owned>, Error>
+        lib_type: impl AsRef<str>,
+    ) -> Result<Loader<'interface, Owned>, Error<Owned>>
     where
         L: LibraryLoaderAPI<'static>,
         LibraryLoader<L, Owned>: From<&'loader LT>,
     {
         let lib_str = lib_type.as_ref();
         if lib_str.as_bytes().len() > LOADER_TYPE_MAX_LENGTH {
-            return Err(Error::InvalidLibraryType(String::from(lib_str)));
+            return Err(Error::from(SimpleError::new(format!(
+                "Loader type too long: {}",
+                lib_str
+            ))));
         }
 
         let lib_type = LibraryType::from(lib_str);
@@ -298,17 +306,17 @@ where
                 LibraryLoader::<L, Owned>::from(loader).to_interface(),
                 NonNullConst::from(&lib_type),
             )
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |v| Ok(Loader::new(v)))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |v| Ok(Loader::new(v)))
         }
     }
 
     #[inline]
-    fn unregister_loader(&mut self, loader: Loader<'_, Owned>) -> Result<(), Error> {
+    fn unregister_loader(&mut self, loader: Loader<'_, Owned>) -> Result<(), Error<Owned>> {
         unsafe {
             self.unregister_loader(loader.as_handle())
-                .to_result()
-                .map_or_else(|e| Err(Error::FFIError(e)), |_v| Ok(()))
+                .into_rust()
+                .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
         }
     }
 
@@ -316,16 +324,16 @@ where
     fn get_loader_interface<'loader, O, L>(
         &mut self,
         loader: &Loader<'loader, O>,
-    ) -> Result<LibraryLoader<L, O>, Error>
+    ) -> Result<LibraryLoader<L, O>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
         L: LibraryLoaderAPI<'loader> + LibraryLoaderABICompat,
     {
         unsafe {
             self.get_loader_interface(loader.as_handle())
-                .to_result()
+                .into_rust()
                 .map_or_else(
-                    |e| Err(Error::FFIError(e)),
+                    |e| Err(Error::from(e)),
                     |v| Ok(LibraryLoader::from_interface(v)),
                 )
         }
@@ -334,19 +342,22 @@ where
     #[inline]
     fn get_loader_handle_from_type(
         &self,
-        lib_type: &impl AsRef<str>,
-    ) -> Result<Loader<'interface, BorrowMutable<'_>>, Error> {
+        lib_type: impl AsRef<str>,
+    ) -> Result<Loader<'interface, BorrowMutable<'_>>, Error<Owned>> {
         let lib_str = lib_type.as_ref();
         if lib_str.as_bytes().len() > LOADER_TYPE_MAX_LENGTH {
-            return Err(Error::InvalidLibraryType(String::from(lib_str)));
+            return Err(Error::from(SimpleError::new(format!(
+                "Loader type too long: {}",
+                lib_str
+            ))));
         }
 
         let lib_type = LibraryType::from(lib_str);
 
         unsafe {
             self.get_loader_handle_from_type(NonNullConst::from(&lib_type))
-                .to_result()
-                .map_or_else(|e| Err(Error::FFIError(e)), |v| Ok(Loader::new(v)))
+                .into_rust()
+                .map_or_else(|e| Err(Error::from(e)), |v| Ok(Loader::new(v)))
         }
     }
 
@@ -354,14 +365,14 @@ where
     fn get_loader_handle_from_library<'library, O>(
         &self,
         library: &Library<'library, O>,
-    ) -> Result<Loader<'library, BorrowMutable<'_>>, Error>
+    ) -> Result<Loader<'library, BorrowMutable<'_>>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
         unsafe {
             self.get_loader_handle_from_library(library.as_handle())
-                .to_result()
-                .map_or_else(|e| Err(Error::FFIError(e)), |v| Ok(Loader::new(v)))
+                .into_rust()
+                .map_or_else(|e| Err(Error::from(e)), |v| Ok(Loader::new(v)))
         }
     }
 
@@ -379,10 +390,13 @@ where
     }
 
     #[inline]
-    fn type_exists(&self, lib_type: &impl AsRef<str>) -> Result<bool, Error> {
+    fn type_exists(&self, lib_type: impl AsRef<str>) -> Result<bool, Error<Owned>> {
         let lib_str = lib_type.as_ref();
         if lib_str.as_bytes().len() > LOADER_TYPE_MAX_LENGTH {
-            return Err(Error::InvalidLibraryType(String::from(lib_str)));
+            return Err(Error::from(SimpleError::new(format!(
+                "Loader type too long: {}",
+                lib_str
+            ))));
         }
 
         let lib_type = LibraryType::from(lib_str);
@@ -391,11 +405,14 @@ where
     }
 
     #[inline]
-    fn get_library_types(&self, mut buffer: impl AsMut<[LibraryType]>) -> Result<usize, Error> {
+    fn get_library_types(
+        &self,
+        mut buffer: impl AsMut<[LibraryType]>,
+    ) -> Result<usize, Error<Owned>> {
         unsafe {
             self.get_library_types(NonNull::from(&MutSpan::from(buffer.as_mut())))
-                .to_result()
-                .map_err(Error::FFIError)
+                .into_rust()
+                .map_err(Error::from)
         }
     }
 
@@ -405,10 +422,13 @@ where
     }
 
     #[inline]
-    unsafe fn remove_library_handle(&mut self, library: Library<'_, Owned>) -> Result<(), Error> {
+    unsafe fn remove_library_handle(
+        &mut self,
+        library: Library<'_, Owned>,
+    ) -> Result<(), Error<Owned>> {
         self.remove_library_handle(library.as_handle())
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |_v| Ok(()))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
     }
 
     #[inline]
@@ -417,7 +437,7 @@ where
         library: &Library<'library, O>,
         loader: &Loader<'loader, LO>,
         internal: &InternalLibrary<IO>,
-    ) -> Result<(), Error>
+    ) -> Result<(), Error<Owned>>
     where
         'loader: 'library,
         O: MutableAccessIdentifier,
@@ -429,22 +449,22 @@ where
             loader.as_handle(),
             internal.as_handle(),
         )
-        .to_result()
-        .map_or_else(|e| Err(Error::FFIError(e)), |_v| Ok(()))
+        .into_rust()
+        .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
     }
 
     #[inline]
     fn get_internal_library_handle<'library, O>(
         &self,
         library: &Library<'library, O>,
-    ) -> Result<InternalLibrary<O>, Error>
+    ) -> Result<InternalLibrary<O>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
         unsafe {
             self.get_internal_library_handle(library.as_handle())
-                .to_result()
-                .map_or_else(|e| Err(Error::FFIError(e)), |v| Ok(InternalLibrary::new(v)))
+                .into_rust()
+                .map_or_else(|e| Err(Error::from(e)), |v| Ok(InternalLibrary::new(v)))
         }
     }
 
@@ -452,25 +472,25 @@ where
     fn load<O>(
         &mut self,
         loader: &Loader<'interface, O>,
-        path: &impl AsRef<Path>,
-    ) -> Result<Library<'interface, Owned>, Error>
+        path: impl AsRef<Path>,
+    ) -> Result<Library<'interface, Owned>, Error<Owned>>
     where
         O: MutableAccessIdentifier,
     {
         let path_buff = path.as_ref().to_os_path_buff_null();
         unsafe {
             self.load(loader.as_handle(), NonNullConst::from(path_buff.as_slice()))
-                .to_result()
-                .map_or_else(|e| Err(Error::FFIError(e)), |v| Ok(Library::new(v)))
+                .into_rust()
+                .map_or_else(|e| Err(Error::from(e)), |v| Ok(Library::new(v)))
         }
     }
 
     #[inline]
-    fn unload(&mut self, library: Library<'_, Owned>) -> Result<(), Error> {
+    fn unload(&mut self, library: Library<'_, Owned>) -> Result<(), Error<Owned>> {
         unsafe {
             self.unload(library.as_handle())
-                .to_result()
-                .map_or_else(|e| Err(Error::FFIError(e)), |_v| Ok(()))
+                .into_rust()
+                .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
         }
     }
 
@@ -478,9 +498,9 @@ where
     fn get_data_symbol<'library, 'handle, O, U>(
         &self,
         library: &'handle Library<'library, O>,
-        symbol: &impl AsRef<CStr>,
+        symbol: impl AsRef<CStr>,
         caster: impl FnOnce(NonNullConst<c_void>) -> &'library U,
-    ) -> Result<Symbol<'handle, &'library U>, Error>
+    ) -> Result<Symbol<'handle, &'library U>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -489,9 +509,9 @@ where
                 library.as_handle(),
                 NonNullConst::from(symbol.as_ref().to_bytes_with_nul()),
             )
-            .to_result()
+            .into_rust()
             .map_or_else(
-                |e| Err(Error::FFIError(e)),
+                |e| Err(Error::from(e)),
                 |v| Ok(Symbol::new(caster(v.symbol))),
             )
         }
@@ -501,9 +521,9 @@ where
     fn get_function_symbol<'library, 'handle, O, U>(
         &self,
         library: &'handle Library<'library, O>,
-        symbol: &impl AsRef<CStr>,
+        symbol: impl AsRef<CStr>,
         caster: impl FnOnce(CBaseFn) -> U,
-    ) -> Result<Symbol<'handle, U>, Error>
+    ) -> Result<Symbol<'handle, U>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -512,9 +532,9 @@ where
                 library.as_handle(),
                 NonNullConst::from(symbol.as_ref().to_bytes_with_nul()),
             )
-            .to_result()
+            .into_rust()
             .map_or_else(
-                |e| Err(Error::FFIError(e)),
+                |e| Err(Error::from(e)),
                 |v| Ok(Symbol::new(caster(v.symbol))),
             )
         }

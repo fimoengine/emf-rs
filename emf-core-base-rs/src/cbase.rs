@@ -1,4 +1,5 @@
 use crate::ffi::collections::{ConstSpan, MutSpan, NonNullConst, Optional, Result};
+use crate::ffi::errors::Error;
 use crate::ffi::library::api::LibraryBinding;
 use crate::ffi::library::library_loader::LibraryLoaderInterface;
 use crate::ffi::module;
@@ -8,16 +9,17 @@ use crate::ffi::sys::api::SysBinding;
 use crate::ffi::sys::sync_handler::SyncHandlerInterface;
 use crate::ffi::version;
 use crate::ffi::version::api::VersionBinding;
-use crate::ffi::version::{Error, ReleaseType};
+use crate::ffi::version::ReleaseType;
 use crate::ffi::{library, CBaseBinding};
 use crate::ffi::{Bool, CBaseInterface, FnId};
 use crate::fn_caster::FnCaster;
 use crate::library::LibraryAPI;
 use crate::module::ModuleAPI;
+use crate::ownership::Owned;
 use crate::sys::{SysAPI, SysAPIMin};
 use crate::version::{Version, VersionAPI};
 use std::cell::UnsafeCell;
-use std::ffi::{c_void, CStr};
+use std::ffi::c_void;
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 
@@ -137,7 +139,7 @@ impl SysBinding for CBaseRef<'_> {
     }
 
     #[inline]
-    unsafe fn panic(&self, error: Option<NonNullConst<u8>>) -> ! {
+    unsafe fn panic(&self, error: Optional<Error>) -> ! {
         SysBinding::panic(self._interface.as_ref(), error)
     }
 
@@ -224,10 +226,7 @@ impl VersionBinding for CBaseRef<'_> {
     }
 
     #[inline]
-    unsafe fn from_string(
-        &self,
-        buffer: NonNullConst<ConstSpan<u8>>,
-    ) -> Result<Version, version::Error> {
+    unsafe fn from_string(&self, buffer: NonNullConst<ConstSpan<u8>>) -> Result<Version, Error> {
         VersionBinding::from_string(self._interface.as_ref(), buffer)
     }
 
@@ -251,7 +250,7 @@ impl VersionBinding for CBaseRef<'_> {
         &self,
         version: NonNullConst<Version>,
         buffer: NonNull<MutSpan<u8>>,
-    ) -> Result<usize, version::Error> {
+    ) -> Result<usize, Error> {
         VersionBinding::as_string_short(self._interface.as_ref(), version, buffer)
     }
 
@@ -260,7 +259,7 @@ impl VersionBinding for CBaseRef<'_> {
         &self,
         version: NonNullConst<Version>,
         buffer: NonNull<MutSpan<u8>>,
-    ) -> Result<usize, version::Error> {
+    ) -> Result<usize, Error> {
         VersionBinding::as_string_long(self._interface.as_ref(), version, buffer)
     }
 
@@ -269,7 +268,7 @@ impl VersionBinding for CBaseRef<'_> {
         &self,
         version: NonNullConst<Version>,
         buffer: NonNull<MutSpan<u8>>,
-    ) -> Result<usize, version::Error> {
+    ) -> Result<usize, Error> {
         VersionBinding::as_string_full(self._interface.as_ref(), version, buffer)
     }
 
@@ -305,15 +304,12 @@ impl LibraryBinding for CBaseRef<'_> {
         &mut self,
         loader: NonNullConst<LibraryLoaderInterface>,
         lib_type: NonNullConst<library::LibraryType>,
-    ) -> Result<library::LoaderHandle, library::Error> {
+    ) -> Result<library::LoaderHandle, Error> {
         LibraryBinding::register_loader(self._interface.into_mut().as_mut(), loader, lib_type)
     }
 
     #[inline]
-    unsafe fn unregister_loader(
-        &mut self,
-        handle: library::LoaderHandle,
-    ) -> Result<i8, library::Error> {
+    unsafe fn unregister_loader(&mut self, handle: library::LoaderHandle) -> Result<i8, Error> {
         LibraryBinding::unregister_loader(self._interface.into_mut().as_mut(), handle)
     }
 
@@ -321,7 +317,7 @@ impl LibraryBinding for CBaseRef<'_> {
     unsafe fn get_loader_interface(
         &mut self,
         handle: library::LoaderHandle,
-    ) -> Result<NonNullConst<LibraryLoaderInterface>, library::Error> {
+    ) -> Result<NonNullConst<LibraryLoaderInterface>, Error> {
         LibraryBinding::get_loader_interface(self._interface.into_mut().as_mut(), handle)
     }
 
@@ -329,7 +325,7 @@ impl LibraryBinding for CBaseRef<'_> {
     unsafe fn get_loader_handle_from_type(
         &self,
         lib_type: NonNullConst<library::LibraryType>,
-    ) -> Result<library::LoaderHandle, library::Error> {
+    ) -> Result<library::LoaderHandle, Error> {
         LibraryBinding::get_loader_handle_from_type(self._interface.as_ref(), lib_type)
     }
 
@@ -337,7 +333,7 @@ impl LibraryBinding for CBaseRef<'_> {
     unsafe fn get_loader_handle_from_library(
         &self,
         handle: library::LibraryHandle,
-    ) -> Result<library::LoaderHandle, library::Error> {
+    ) -> Result<library::LoaderHandle, Error> {
         LibraryBinding::get_loader_handle_from_library(self._interface.as_ref(), handle)
     }
 
@@ -360,7 +356,7 @@ impl LibraryBinding for CBaseRef<'_> {
     unsafe fn get_library_types(
         &self,
         buffer: NonNull<MutSpan<library::LibraryType>>,
-    ) -> Result<usize, library::Error> {
+    ) -> Result<usize, Error> {
         LibraryBinding::get_library_types(self._interface.as_ref(), buffer)
     }
 
@@ -373,7 +369,7 @@ impl LibraryBinding for CBaseRef<'_> {
     unsafe fn remove_library_handle(
         &mut self,
         handle: library::LibraryHandle,
-    ) -> Result<i8, library::Error> {
+    ) -> Result<i8, Error> {
         LibraryBinding::remove_library_handle(self._interface.into_mut().as_mut(), handle)
     }
 
@@ -383,7 +379,7 @@ impl LibraryBinding for CBaseRef<'_> {
         handle: library::LibraryHandle,
         loader: library::LoaderHandle,
         internal: library::InternalHandle,
-    ) -> Result<i8, library::Error> {
+    ) -> Result<i8, Error> {
         LibraryBinding::link_library(
             self._interface.into_mut().as_mut(),
             handle,
@@ -396,7 +392,7 @@ impl LibraryBinding for CBaseRef<'_> {
     unsafe fn get_internal_library_handle(
         &self,
         handle: library::LibraryHandle,
-    ) -> Result<library::InternalHandle, library::Error> {
+    ) -> Result<library::InternalHandle, Error> {
         LibraryBinding::get_internal_library_handle(self._interface.as_ref(), handle)
     }
 
@@ -405,12 +401,12 @@ impl LibraryBinding for CBaseRef<'_> {
         &mut self,
         loader: library::LoaderHandle,
         path: NonNullConst<library::OSPathChar>,
-    ) -> Result<library::LibraryHandle, library::Error> {
+    ) -> Result<library::LibraryHandle, Error> {
         LibraryBinding::load(self._interface.into_mut().as_mut(), loader, path)
     }
 
     #[inline]
-    unsafe fn unload(&mut self, handle: library::LibraryHandle) -> Result<i8, library::Error> {
+    unsafe fn unload(&mut self, handle: library::LibraryHandle) -> Result<i8, Error> {
         LibraryBinding::unload(self._interface.into_mut().as_mut(), handle)
     }
 
@@ -419,7 +415,7 @@ impl LibraryBinding for CBaseRef<'_> {
         &self,
         handle: library::LibraryHandle,
         symbol: NonNullConst<u8>,
-    ) -> Result<library::Symbol<NonNullConst<c_void>>, library::Error> {
+    ) -> Result<library::Symbol<NonNullConst<c_void>>, Error> {
         LibraryBinding::get_data_symbol(self._interface.as_ref(), handle, symbol)
     }
 
@@ -428,7 +424,7 @@ impl LibraryBinding for CBaseRef<'_> {
         &self,
         handle: library::LibraryHandle,
         symbol: NonNullConst<u8>,
-    ) -> Result<library::Symbol<fn()>, library::Error> {
+    ) -> Result<library::Symbol<fn()>, Error> {
         LibraryBinding::get_function_symbol(self._interface.as_ref(), handle, symbol)
     }
 }
@@ -439,15 +435,12 @@ impl ModuleBinding for CBaseRef<'_> {
         &mut self,
         loader: NonNullConst<ModuleLoaderInterface>,
         mod_type: NonNullConst<module::ModuleType>,
-    ) -> Result<module::LoaderHandle, module::Error> {
+    ) -> Result<module::LoaderHandle, Error> {
         ModuleBinding::register_loader(self._interface.into_mut().as_mut(), loader, mod_type)
     }
 
     #[inline]
-    unsafe fn unregister_loader(
-        &mut self,
-        loader: module::LoaderHandle,
-    ) -> Result<i8, module::Error> {
+    unsafe fn unregister_loader(&mut self, loader: module::LoaderHandle) -> Result<i8, Error> {
         ModuleBinding::unregister_loader(self._interface.into_mut().as_mut(), loader)
     }
 
@@ -455,7 +448,7 @@ impl ModuleBinding for CBaseRef<'_> {
     unsafe fn get_loader_interface(
         &mut self,
         loader: module::LoaderHandle,
-    ) -> Result<NonNullConst<ModuleLoaderInterface>, module::Error> {
+    ) -> Result<NonNullConst<ModuleLoaderInterface>, Error> {
         ModuleBinding::get_loader_interface(self._interface.into_mut().as_mut(), loader)
     }
 
@@ -463,7 +456,7 @@ impl ModuleBinding for CBaseRef<'_> {
     unsafe fn get_loader_handle_from_type(
         &self,
         mod_type: NonNullConst<module::ModuleType>,
-    ) -> Result<module::LoaderHandle, module::Error> {
+    ) -> Result<module::LoaderHandle, Error> {
         ModuleBinding::get_loader_handle_from_type(self._interface.as_ref(), mod_type)
     }
 
@@ -471,7 +464,7 @@ impl ModuleBinding for CBaseRef<'_> {
     unsafe fn get_loader_handle_from_module(
         &self,
         handle: module::ModuleHandle,
-    ) -> Result<module::LoaderHandle, module::Error> {
+    ) -> Result<module::LoaderHandle, Error> {
         ModuleBinding::get_loader_handle_from_module(self._interface.as_ref(), handle)
     }
 
@@ -512,7 +505,7 @@ impl ModuleBinding for CBaseRef<'_> {
     unsafe fn get_modules(
         &self,
         buffer: NonNull<MutSpan<module::ModuleInfo>>,
-    ) -> Result<usize, module::Error> {
+    ) -> Result<usize, Error> {
         ModuleBinding::get_modules(self._interface.as_ref(), buffer)
     }
 
@@ -520,7 +513,7 @@ impl ModuleBinding for CBaseRef<'_> {
     unsafe fn get_module_types(
         &self,
         buffer: NonNull<MutSpan<module::ModuleType>>,
-    ) -> Result<usize, module::Error> {
+    ) -> Result<usize, Error> {
         ModuleBinding::get_module_types(self._interface.as_ref(), buffer)
     }
 
@@ -528,7 +521,7 @@ impl ModuleBinding for CBaseRef<'_> {
     unsafe fn get_exported_interfaces(
         &self,
         buffer: NonNull<MutSpan<module::InterfaceDescriptor>>,
-    ) -> Result<usize, module::Error> {
+    ) -> Result<usize, Error> {
         ModuleBinding::get_exported_interfaces(self._interface.as_ref(), buffer)
     }
 
@@ -536,7 +529,7 @@ impl ModuleBinding for CBaseRef<'_> {
     unsafe fn get_exported_interface_handle(
         &self,
         interface: NonNullConst<module::InterfaceDescriptor>,
-    ) -> Result<module::ModuleHandle, module::Error> {
+    ) -> Result<module::ModuleHandle, Error> {
         ModuleBinding::get_exported_interface_handle(self._interface.as_ref(), interface)
     }
 
@@ -546,10 +539,7 @@ impl ModuleBinding for CBaseRef<'_> {
     }
 
     #[inline]
-    unsafe fn remove_module_handle(
-        &mut self,
-        handle: module::ModuleHandle,
-    ) -> Result<i8, module::Error> {
+    unsafe fn remove_module_handle(&mut self, handle: module::ModuleHandle) -> Result<i8, Error> {
         ModuleBinding::remove_module_handle(self._interface.into_mut().as_mut(), handle)
     }
 
@@ -559,7 +549,7 @@ impl ModuleBinding for CBaseRef<'_> {
         handle: module::ModuleHandle,
         loader: module::LoaderHandle,
         internal: module::InternalHandle,
-    ) -> Result<i8, module::Error> {
+    ) -> Result<i8, Error> {
         ModuleBinding::link_module(
             self._interface.into_mut().as_mut(),
             handle,
@@ -572,7 +562,7 @@ impl ModuleBinding for CBaseRef<'_> {
     unsafe fn get_internal_module_handle(
         &self,
         handle: module::ModuleHandle,
-    ) -> Result<module::InternalHandle, module::Error> {
+    ) -> Result<module::InternalHandle, Error> {
         ModuleBinding::get_internal_module_handle(self._interface.as_ref(), handle)
     }
 
@@ -581,32 +571,32 @@ impl ModuleBinding for CBaseRef<'_> {
         &mut self,
         loader: module::LoaderHandle,
         path: NonNullConst<library::OSPathChar>,
-    ) -> Result<module::ModuleHandle, module::Error> {
+    ) -> Result<module::ModuleHandle, Error> {
         ModuleBinding::add_module(self._interface.into_mut().as_mut(), loader, path)
     }
 
     #[inline]
-    unsafe fn remove_module(&mut self, handle: module::ModuleHandle) -> Result<i8, module::Error> {
+    unsafe fn remove_module(&mut self, handle: module::ModuleHandle) -> Result<i8, Error> {
         ModuleBinding::remove_module(self._interface.into_mut().as_mut(), handle)
     }
 
     #[inline]
-    unsafe fn load(&mut self, handle: module::ModuleHandle) -> Result<i8, module::Error> {
+    unsafe fn load(&mut self, handle: module::ModuleHandle) -> Result<i8, Error> {
         ModuleBinding::load(self._interface.into_mut().as_mut(), handle)
     }
 
     #[inline]
-    unsafe fn unload(&mut self, handle: module::ModuleHandle) -> Result<i8, module::Error> {
+    unsafe fn unload(&mut self, handle: module::ModuleHandle) -> Result<i8, Error> {
         ModuleBinding::unload(self._interface.into_mut().as_mut(), handle)
     }
 
     #[inline]
-    unsafe fn initialize(&mut self, handle: module::ModuleHandle) -> Result<i8, module::Error> {
+    unsafe fn initialize(&mut self, handle: module::ModuleHandle) -> Result<i8, Error> {
         ModuleBinding::initialize(self._interface.into_mut().as_mut(), handle)
     }
 
     #[inline]
-    unsafe fn terminate(&mut self, handle: module::ModuleHandle) -> Result<i8, module::Error> {
+    unsafe fn terminate(&mut self, handle: module::ModuleHandle) -> Result<i8, Error> {
         ModuleBinding::terminate(self._interface.into_mut().as_mut(), handle)
     }
 
@@ -615,7 +605,7 @@ impl ModuleBinding for CBaseRef<'_> {
         &mut self,
         handle: module::ModuleHandle,
         interface: NonNullConst<module::InterfaceDescriptor>,
-    ) -> Result<i8, module::Error> {
+    ) -> Result<i8, Error> {
         ModuleBinding::add_dependency(self._interface.into_mut().as_mut(), handle, interface)
     }
 
@@ -624,7 +614,7 @@ impl ModuleBinding for CBaseRef<'_> {
         &mut self,
         handle: module::ModuleHandle,
         interface: NonNullConst<module::InterfaceDescriptor>,
-    ) -> Result<i8, module::Error> {
+    ) -> Result<i8, Error> {
         ModuleBinding::remove_dependency(self._interface.into_mut().as_mut(), handle, interface)
     }
 
@@ -633,7 +623,7 @@ impl ModuleBinding for CBaseRef<'_> {
         &mut self,
         handle: module::ModuleHandle,
         interface: NonNullConst<module::InterfaceDescriptor>,
-    ) -> Result<i8, module::Error> {
+    ) -> Result<i8, Error> {
         ModuleBinding::export_interface(self._interface.into_mut().as_mut(), handle, interface)
     }
 
@@ -641,7 +631,7 @@ impl ModuleBinding for CBaseRef<'_> {
     unsafe fn get_load_dependencies(
         &self,
         handle: module::ModuleHandle,
-    ) -> Result<ConstSpan<module::InterfaceDescriptor>, module::Error> {
+    ) -> Result<ConstSpan<module::InterfaceDescriptor>, Error> {
         ModuleBinding::get_load_dependencies(self._interface.as_ref(), handle)
     }
 
@@ -649,7 +639,7 @@ impl ModuleBinding for CBaseRef<'_> {
     unsafe fn get_runtime_dependencies(
         &self,
         handle: module::ModuleHandle,
-    ) -> Result<ConstSpan<module::InterfaceDescriptor>, module::Error> {
+    ) -> Result<ConstSpan<module::InterfaceDescriptor>, Error> {
         ModuleBinding::get_runtime_dependencies(self._interface.as_ref(), handle)
     }
 
@@ -657,7 +647,7 @@ impl ModuleBinding for CBaseRef<'_> {
     unsafe fn get_exportable_interfaces(
         &self,
         handle: module::ModuleHandle,
-    ) -> Result<ConstSpan<module::InterfaceDescriptor>, module::Error> {
+    ) -> Result<ConstSpan<module::InterfaceDescriptor>, Error> {
         ModuleBinding::get_exportable_interfaces(self._interface.as_ref(), handle)
     }
 
@@ -665,7 +655,7 @@ impl ModuleBinding for CBaseRef<'_> {
     unsafe fn fetch_status(
         &self,
         handle: module::ModuleHandle,
-    ) -> Result<module::ModuleStatus, module::Error> {
+    ) -> Result<module::ModuleStatus, Error> {
         ModuleBinding::fetch_status(self._interface.as_ref(), handle)
     }
 
@@ -673,7 +663,7 @@ impl ModuleBinding for CBaseRef<'_> {
     unsafe fn get_module_path(
         &self,
         handle: module::ModuleHandle,
-    ) -> Result<NonNullConst<library::OSPathChar>, module::Error> {
+    ) -> Result<NonNullConst<library::OSPathChar>, Error> {
         ModuleBinding::get_module_path(self._interface.as_ref(), handle)
     }
 
@@ -681,7 +671,7 @@ impl ModuleBinding for CBaseRef<'_> {
     unsafe fn get_module_info(
         &self,
         handle: module::ModuleHandle,
-    ) -> Result<NonNullConst<module::ModuleInfo>, module::Error> {
+    ) -> Result<NonNullConst<module::ModuleInfo>, Error> {
         ModuleBinding::get_module_info(self._interface.as_ref(), handle)
     }
 
@@ -690,7 +680,7 @@ impl ModuleBinding for CBaseRef<'_> {
         &self,
         handle: module::ModuleHandle,
         interface: NonNullConst<module::InterfaceDescriptor>,
-    ) -> Result<module::Interface, module::Error> {
+    ) -> Result<module::Interface, Error> {
         ModuleBinding::get_interface(self._interface.as_ref(), handle, interface)
     }
 }
@@ -758,7 +748,7 @@ impl<'interface> CBaseInterfaceInfo for CBase<'interface> {
 }
 
 impl<'interface> SysAPIMin<'interface> for CBase<'interface> {
-    fn panic(&self, error: Option<impl AsRef<CStr>>) -> ! {
+    fn panic(&self, error: Option<crate::error::Error<Owned>>) -> ! {
         unsafe { self.assume_locked(|int| SysAPIMin::panic(int, error)) }
     }
 

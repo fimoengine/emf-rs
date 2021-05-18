@@ -7,7 +7,9 @@ use crate::ffi::Bool;
 use std::cmp::Ordering;
 use std::ptr::NonNull;
 
-pub use crate::ffi::version::{Error, ReleaseType, Version};
+pub use crate::ffi::version::{ReleaseType, Version};
+use crate::ownership::Owned;
+use crate::Error;
 
 /// Trait for providing access to the version api.
 pub trait VersionAPI {
@@ -64,7 +66,7 @@ pub trait VersionAPI {
     /// # Return
     ///
     /// Constructed version.
-    fn from_string(&self, buffer: impl AsRef<str>) -> Result<Version, Error>;
+    fn from_string(&self, buffer: impl AsRef<str>) -> Result<Version, Error<Owned>>;
 
     /// Computes the length of the short version string.
     ///
@@ -96,7 +98,11 @@ pub trait VersionAPI {
     /// # Return
     ///
     /// Number of written characters on success, error otherwise.
-    fn as_string_short(&self, version: &Version, buffer: impl AsMut<str>) -> Result<usize, Error>;
+    fn as_string_short(
+        &self,
+        version: &Version,
+        buffer: impl AsMut<str>,
+    ) -> Result<usize, Error<Owned>>;
 
     /// Represents the version as a long string.
     ///
@@ -107,7 +113,11 @@ pub trait VersionAPI {
     /// # Return
     ///
     /// Number of written characters on success, error otherwise.
-    fn as_string_long(&self, version: &Version, buffer: impl AsMut<str>) -> Result<usize, Error>;
+    fn as_string_long(
+        &self,
+        version: &Version,
+        buffer: impl AsMut<str>,
+    ) -> Result<usize, Error<Owned>>;
 
     /// Represents the version as a full string.
     ///
@@ -118,7 +128,11 @@ pub trait VersionAPI {
     /// # Return
     ///
     /// Number of written characters on success, error otherwise.
-    fn as_string_full(&self, version: &Version, buffer: impl AsMut<str>) -> Result<usize, Error>;
+    fn as_string_full(
+        &self,
+        version: &Version,
+        buffer: impl AsMut<str>,
+    ) -> Result<usize, Error<Owned>>;
 
     /// Checks whether the version string is valid.
     ///
@@ -213,13 +227,14 @@ where
     }
 
     #[inline]
-    fn from_string(&self, buffer: impl AsRef<str>) -> Result<Version, Error> {
+    fn from_string(&self, buffer: impl AsRef<str>) -> Result<Version, Error<Owned>> {
         unsafe {
             <T as VersionBinding>::from_string(
                 self,
                 NonNullConst::from(&ConstSpan::from(buffer.as_ref())),
             )
-            .to_result()
+            .into_rust()
+            .map_err(From::from)
         }
     }
 
@@ -243,14 +258,15 @@ where
         &self,
         version: &Version,
         mut buffer: impl AsMut<str>,
-    ) -> Result<usize, Error> {
+    ) -> Result<usize, Error<Owned>> {
         unsafe {
             <T as VersionBinding>::as_string_short(
                 self,
                 NonNullConst::from(version),
                 NonNull::from(&MutSpan::from(buffer.as_mut())),
             )
-            .to_result()
+            .into_rust()
+            .map_err(From::from)
         }
     }
 
@@ -259,14 +275,15 @@ where
         &self,
         version: &Version,
         mut buffer: impl AsMut<str>,
-    ) -> Result<usize, Error> {
+    ) -> Result<usize, Error<Owned>> {
         unsafe {
             <T as VersionBinding>::as_string_long(
                 self,
                 NonNullConst::from(version),
                 NonNull::from(&MutSpan::from(buffer.as_mut())),
             )
-            .to_result()
+            .into_rust()
+            .map_err(From::from)
         }
     }
 
@@ -275,14 +292,15 @@ where
         &self,
         version: &Version,
         mut buffer: impl AsMut<str>,
-    ) -> Result<usize, Error> {
+    ) -> Result<usize, Error<Owned>> {
         unsafe {
             <T as VersionBinding>::as_string_full(
                 self,
                 NonNullConst::from(version),
                 NonNull::from(&MutSpan::from(buffer.as_mut())),
             )
-            .to_result()
+            .into_rust()
+            .map_err(From::from)
         }
     }
 

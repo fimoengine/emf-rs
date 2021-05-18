@@ -4,10 +4,11 @@ use crate::ffi::library::library_loader::{
     LibraryLoaderBinding, LibraryLoaderInterface, NativeLibraryHandle, NativeLibraryLoaderInterface,
 };
 use crate::ffi::CBaseFn;
-use crate::library::{Error, InternalLibrary, Symbol};
+use crate::library::{InternalLibrary, Symbol};
 use crate::ownership::{
     AccessIdentifier, ImmutableAccessIdentifier, MutableAccessIdentifier, Owned,
 };
+use crate::Error;
 use crate::ToOsPathBuff;
 use std::borrow::Borrow;
 use std::ffi::{c_void, CStr};
@@ -61,7 +62,10 @@ pub trait LibraryLoaderAPI<'a> {
     /// The function crosses the ffi boundary.
     /// Direct usage of a [LibraryLoaderAPI] may break some invariants
     /// of the library api, if not handled with care.
-    unsafe fn load(&mut self, path: &impl AsRef<Path>) -> Result<InternalLibrary<Owned>, Error>;
+    unsafe fn load(
+        &mut self,
+        path: impl AsRef<Path>,
+    ) -> Result<InternalLibrary<Owned>, Error<Owned>>;
 
     /// Unloads a library.
     ///
@@ -78,7 +82,7 @@ pub trait LibraryLoaderAPI<'a> {
     /// The function crosses the ffi boundary.
     /// Direct usage of a [LibraryLoaderAPI] may break some invariants
     /// of the library api, if not handled with care.
-    unsafe fn unload(&mut self, internal: InternalLibrary<Owned>) -> Result<(), Error>;
+    unsafe fn unload(&mut self, internal: InternalLibrary<Owned>) -> Result<(), Error<Owned>>;
 
     /// Fetches a data symbol from a library.
     ///
@@ -103,9 +107,9 @@ pub trait LibraryLoaderAPI<'a> {
     unsafe fn get_data_symbol<O, U>(
         &self,
         internal: &InternalLibrary<O>,
-        symbol: &impl AsRef<CStr>,
+        symbol: impl AsRef<CStr>,
         caster: impl FnOnce(NonNullConst<c_void>) -> &'a U,
-    ) -> Result<Symbol<'a, &'a U>, Error>
+    ) -> Result<Symbol<'a, &'a U>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier;
 
@@ -132,9 +136,9 @@ pub trait LibraryLoaderAPI<'a> {
     unsafe fn get_function_symbol<O, U>(
         &self,
         internal: &InternalLibrary<O>,
-        symbol: &impl AsRef<CStr>,
+        symbol: impl AsRef<CStr>,
         caster: impl FnOnce(CBaseFn) -> U,
-    ) -> Result<Symbol<'a, U>, Error>
+    ) -> Result<Symbol<'a, U>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier;
 
@@ -243,8 +247,8 @@ where
     #[inline]
     pub unsafe fn load(
         &mut self,
-        path: &impl AsRef<Path>,
-    ) -> Result<InternalLibrary<Owned>, Error> {
+        path: impl AsRef<Path>,
+    ) -> Result<InternalLibrary<Owned>, Error<Owned>> {
         self._loader.load(path)
     }
 
@@ -264,7 +268,7 @@ where
     /// Direct usage of a [LibraryLoader] may break some invariants
     /// of the library api, if not handled with care.
     #[inline]
-    pub unsafe fn unload(&mut self, internal: InternalLibrary<Owned>) -> Result<(), Error> {
+    pub unsafe fn unload(&mut self, internal: InternalLibrary<Owned>) -> Result<(), Error<Owned>> {
         self._loader.unload(internal)
     }
 }
@@ -298,9 +302,9 @@ where
     pub unsafe fn get_data_symbol<LO, U>(
         &self,
         internal: &InternalLibrary<LO>,
-        symbol: &impl AsRef<CStr>,
+        symbol: impl AsRef<CStr>,
         caster: impl FnOnce(NonNullConst<c_void>) -> &'a U,
-    ) -> Result<Symbol<'a, &'a U>, Error>
+    ) -> Result<Symbol<'a, &'a U>, Error<Owned>>
     where
         LO: ImmutableAccessIdentifier,
     {
@@ -331,9 +335,9 @@ where
     pub unsafe fn get_function_symbol<LO, U>(
         &self,
         internal: &InternalLibrary<LO>,
-        symbol: &impl AsRef<CStr>,
+        symbol: impl AsRef<CStr>,
         caster: impl FnOnce(CBaseFn) -> U,
-    ) -> Result<Symbol<'a, U>, Error>
+    ) -> Result<Symbol<'a, U>, Error<Owned>>
     where
         LO: ImmutableAccessIdentifier,
     {
@@ -445,33 +449,36 @@ impl<'a> LibraryLoaderAPI<'a> for UnknownLoader<'a> {
     }
 
     #[inline]
-    unsafe fn load(&mut self, path: &impl AsRef<Path>) -> Result<InternalLibrary<Owned>, Error> {
+    unsafe fn load(
+        &mut self,
+        path: impl AsRef<Path>,
+    ) -> Result<InternalLibrary<Owned>, Error<Owned>> {
         let path_buff = path.as_ref().to_os_path_buff_null();
         self._interface
             .into_mut()
             .as_mut()
             .load(NonNullConst::from(path_buff.as_slice()))
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |v| Ok(InternalLibrary::new(v)))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |v| Ok(InternalLibrary::new(v)))
     }
 
     #[inline]
-    unsafe fn unload(&mut self, internal: InternalLibrary<Owned>) -> Result<(), Error> {
+    unsafe fn unload(&mut self, internal: InternalLibrary<Owned>) -> Result<(), Error<Owned>> {
         self._interface
             .into_mut()
             .as_mut()
             .unload(internal.as_handle())
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |_v| Ok(()))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
     }
 
     #[inline]
     unsafe fn get_data_symbol<O, U>(
         &self,
         internal: &InternalLibrary<O>,
-        symbol: &impl AsRef<CStr>,
+        symbol: impl AsRef<CStr>,
         caster: impl FnOnce(NonNullConst<c_void>) -> &'a U,
-    ) -> Result<Symbol<'a, &'a U>, Error>
+    ) -> Result<Symbol<'a, &'a U>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -481,9 +488,9 @@ impl<'a> LibraryLoaderAPI<'a> for UnknownLoader<'a> {
                 internal.borrow().as_handle(),
                 NonNullConst::from(symbol.as_ref().to_bytes_with_nul()),
             )
-            .to_result()
+            .into_rust()
             .map_or_else(
-                |e| Err(Error::FFIError(e)),
+                |e| Err(Error::from(e)),
                 |v| Ok(Symbol::new(caster(v.symbol))),
             )
     }
@@ -492,9 +499,9 @@ impl<'a> LibraryLoaderAPI<'a> for UnknownLoader<'a> {
     unsafe fn get_function_symbol<O, U>(
         &self,
         internal: &InternalLibrary<O>,
-        symbol: &impl AsRef<CStr>,
+        symbol: impl AsRef<CStr>,
         caster: impl FnOnce(CBaseFn) -> U,
-    ) -> Result<Symbol<'a, U>, Error>
+    ) -> Result<Symbol<'a, U>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -504,9 +511,9 @@ impl<'a> LibraryLoaderAPI<'a> for UnknownLoader<'a> {
                 internal.borrow().as_handle(),
                 NonNullConst::from(symbol.as_ref().to_bytes_with_nul()),
             )
-            .to_result()
+            .into_rust()
             .map_or_else(
-                |e| Err(Error::FFIError(e)),
+                |e| Err(Error::from(e)),
                 |v| Ok(Symbol::new(caster(v.symbol))),
             )
     }
@@ -562,12 +569,15 @@ impl<'a> LibraryLoaderAPI<'a> for NativeLoader<'a> {
     }
 
     #[inline]
-    unsafe fn load(&mut self, path: &impl AsRef<Path>) -> Result<InternalLibrary<Owned>, Error> {
+    unsafe fn load(
+        &mut self,
+        path: impl AsRef<Path>,
+    ) -> Result<InternalLibrary<Owned>, Error<Owned>> {
         self._interface.load(path)
     }
 
     #[inline]
-    unsafe fn unload(&mut self, internal: InternalLibrary<Owned>) -> Result<(), Error> {
+    unsafe fn unload(&mut self, internal: InternalLibrary<Owned>) -> Result<(), Error<Owned>> {
         self._interface.unload(internal)
     }
 
@@ -575,9 +585,9 @@ impl<'a> LibraryLoaderAPI<'a> for NativeLoader<'a> {
     unsafe fn get_data_symbol<O, U>(
         &self,
         internal: &InternalLibrary<O>,
-        symbol: &impl AsRef<CStr>,
+        symbol: impl AsRef<CStr>,
         caster: impl FnOnce(NonNullConst<c_void>) -> &'a U,
-    ) -> Result<Symbol<'a, &'a U>, Error>
+    ) -> Result<Symbol<'a, &'a U>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -588,9 +598,9 @@ impl<'a> LibraryLoaderAPI<'a> for NativeLoader<'a> {
     unsafe fn get_function_symbol<O, U>(
         &self,
         internal: &InternalLibrary<O>,
-        symbol: &impl AsRef<CStr>,
+        symbol: impl AsRef<CStr>,
         caster: impl FnOnce(CBaseFn) -> U,
-    ) -> Result<Symbol<'a, U>, Error>
+    ) -> Result<Symbol<'a, U>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -652,12 +662,15 @@ impl<'a> LibraryLoaderAPI<'a> for NativeLoaderInternal<'a> {
     }
 
     #[inline]
-    unsafe fn load(&mut self, path: &impl AsRef<Path>) -> Result<InternalLibrary<Owned>, Error> {
+    unsafe fn load(
+        &mut self,
+        path: impl AsRef<Path>,
+    ) -> Result<InternalLibrary<Owned>, Error<Owned>> {
         NativeLoader::from_interface(self.to_interface()).load(path)
     }
 
     #[inline]
-    unsafe fn unload(&mut self, internal: InternalLibrary<Owned>) -> Result<(), Error> {
+    unsafe fn unload(&mut self, internal: InternalLibrary<Owned>) -> Result<(), Error<Owned>> {
         NativeLoader::from_interface(self.to_interface()).unload(internal)
     }
 
@@ -665,9 +678,9 @@ impl<'a> LibraryLoaderAPI<'a> for NativeLoaderInternal<'a> {
     unsafe fn get_data_symbol<O, U>(
         &self,
         internal: &InternalLibrary<O>,
-        symbol: &impl AsRef<CStr>,
+        symbol: impl AsRef<CStr>,
         caster: impl FnOnce(NonNullConst<c_void>) -> &'a U,
-    ) -> Result<Symbol<'a, &'a U>, Error>
+    ) -> Result<Symbol<'a, &'a U>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -678,9 +691,9 @@ impl<'a> LibraryLoaderAPI<'a> for NativeLoaderInternal<'a> {
     unsafe fn get_function_symbol<O, U>(
         &self,
         internal: &InternalLibrary<O>,
-        symbol: &impl AsRef<CStr>,
+        symbol: impl AsRef<CStr>,
         caster: impl FnOnce(CBaseFn) -> U,
-    ) -> Result<Symbol<'a, U>, Error>
+    ) -> Result<Symbol<'a, U>, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -717,9 +730,9 @@ impl NativeLoaderInternal<'_> {
     #[cfg(unix)]
     pub unsafe fn load_ext(
         &mut self,
-        path: &impl AsRef<Path>,
+        path: impl AsRef<Path>,
         flags: i32,
-    ) -> Result<InternalLibrary<Owned>, Error> {
+    ) -> Result<InternalLibrary<Owned>, Error<Owned>> {
         use crate::ffi::library::library_loader::NativeLibraryLoaderBindingUnix;
 
         let path_buff = path.as_ref().to_os_path_buff_null();
@@ -727,8 +740,8 @@ impl NativeLoaderInternal<'_> {
             .into_mut()
             .as_mut()
             .load_ext(NonNullConst::from(path_buff.as_slice()), flags)
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |v| Ok(InternalLibrary::new(v)))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |v| Ok(InternalLibrary::new(v)))
     }
 
     /// Loads a library. The resulting handle is unique.
@@ -753,10 +766,10 @@ impl NativeLoaderInternal<'_> {
     #[cfg(windows)]
     pub unsafe fn load_ext(
         &mut self,
-        path: &impl AsRef<Path>,
+        path: impl AsRef<Path>,
         h_file: Option<NonNull<HANDLE>>,
         flags: u32,
-    ) -> Result<InternalLibrary<Owned>, Error> {
+    ) -> Result<InternalLibrary<Owned>, Error<Owned>> {
         use crate::ffi::library::library_loader::NativeLibraryLoaderBindingWindows;
 
         let path_buff = path.as_ref().to_os_path_buff_null();
@@ -764,8 +777,8 @@ impl NativeLoaderInternal<'_> {
             .into_mut()
             .as_mut()
             .load_ext(NonNullConst::from(path_buff.as_slice()), h_file, flags)
-            .to_result()
-            .map_or_else(|e| Err(Error::FFIError(e)), |v| Ok(InternalLibrary::new(v)))
+            .into_rust()
+            .map_or_else(|e| Err(Error::from(e)), |v| Ok(InternalLibrary::new(v)))
     }
 
     /// Returns the underlying handle of a library.
@@ -787,7 +800,7 @@ impl NativeLoaderInternal<'_> {
     pub unsafe fn get_native_handle<O>(
         &self,
         internal: &InternalLibrary<O>,
-    ) -> Result<NativeLibraryHandle, Error>
+    ) -> Result<NativeLibraryHandle, Error<Owned>>
     where
         O: ImmutableAccessIdentifier,
     {
@@ -799,7 +812,7 @@ impl NativeLoaderInternal<'_> {
         self._interface
             .as_ref()
             .get_native_handle(internal.borrow().as_handle())
-            .to_result()
-            .map_err(Error::FFIError)
+            .into_rust()
+            .map_err(Error::from)
     }
 }

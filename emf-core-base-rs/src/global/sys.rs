@@ -1,13 +1,14 @@
 //! Global sys api.
 use crate::fn_caster::FnCaster;
 use crate::global::{get_interface, get_mut_interface, LockToken};
+use crate::ownership::Owned;
 use crate::sys::sync_handler::SyncHandlerAPI;
 use crate::sys::{SysAPI, SysAPIMin};
-use std::ffi::CStr;
+use crate::Error;
 
 /// Execution of the program is stopped abruptly. The error may be logged.
 #[inline]
-pub fn panic(error: Option<impl AsRef<CStr>>) -> ! {
+pub fn panic(error: Option<Error<Owned>>) -> ! {
     SysAPIMin::panic(get_interface(), error)
 }
 
