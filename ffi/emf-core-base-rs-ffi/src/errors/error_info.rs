@@ -47,6 +47,8 @@ impl ErrorInfo {
     }
 }
 
+unsafe impl Send for ErrorInfo {}
+
 impl Drop for ErrorInfo {
     #[inline]
     fn drop(&mut self) {
@@ -138,7 +140,7 @@ pub trait AsErrorInfoVTable {
 
 impl<T> AsErrorInfoVTable for Box<T>
 where
-    T: AsRef<str> + Clone,
+    T: AsRef<str> + Clone + Send,
 {
     const VTABLE: ErrorInfoVTable = ErrorInfoVTable {
         cleanup_fn: TypeWrapper(Self::cleanup_fn),
