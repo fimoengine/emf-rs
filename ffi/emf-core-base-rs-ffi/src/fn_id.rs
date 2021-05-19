@@ -1,6 +1,6 @@
 /// Id's of the functions defined in the interface.
 #[repr(i32)]
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone, Hash)]
 pub enum FnId {
     SysShutdown = 1,
     SysPanic = 2,

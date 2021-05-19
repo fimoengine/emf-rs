@@ -157,7 +157,7 @@ pub trait LibraryLoaderAPI<'a> {
 }
 
 /// A library loader.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct LibraryLoader<T, O> {
     _loader: T,
     _ownership: PhantomData<*const O>,
@@ -365,7 +365,7 @@ where
 }
 
 /// Invalid type erased library loader.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash)]
 pub struct InvalidLoader {
     _interface: NonNullConst<c_void>,
 }
@@ -400,7 +400,7 @@ impl DerefMut for InvalidLoader {
 }
 
 /// Type erased library loader.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct UnknownLoader<'loader> {
     _interface: NonNullConst<LibraryLoaderInterface>,
     _phantom: PhantomData<&'loader ()>,
@@ -525,7 +525,7 @@ impl<'a> LibraryLoaderAPI<'a> for UnknownLoader<'a> {
 }
 
 /// Native library loader.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct NativeLoader<'loader> {
     _interface: UnknownLoader<'loader>,
 }
@@ -615,7 +615,7 @@ impl<'a> LibraryLoaderAPI<'a> for NativeLoader<'a> {
 }
 
 /// Native library loader internal interface.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct NativeLoaderInternal<'loader> {
     _interface: NonNullConst<NativeLibraryLoaderInterface>,
     _phantom: PhantomData<&'loader ()>,

@@ -37,7 +37,7 @@ pub enum Signal {
 }
 
 /// Borrowed context of the unwind_internal api.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct UnwindInternalContextRef {
     /// Context pointer, that is passed to the shutdown and panic functions.
     pub _context: NonNull<Context>,
@@ -51,7 +51,7 @@ unsafe impl Send for UnwindInternalContextRef {}
 unsafe impl Sync for UnwindInternalContextRef {}
 
 /// Interface of the `unwind_internal` extension.
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub struct UnwindInternalInterface<'interface> {
     _interface: NonNullConst<unwind_internal::UnwindInternalInterface>,
     _phantom: PhantomData<&'interface unwind_internal::UnwindInternalInterface>,
@@ -243,15 +243,15 @@ pub mod default_context {
     impl std::error::Error for UnknownError {}
 
     /// Default context.
-    #[derive(Debug)]
+    #[derive(Debug, Hash)]
     pub struct DefaultContext {}
 
     /// A shutdown signal.
-    #[derive(Debug)]
+    #[derive(Debug, Hash)]
     pub struct ShutdownSignal {}
 
     /// A panic signal.
-    #[derive(Debug)]
+    #[derive(Debug, Hash)]
     pub struct PanicSignal {
         /// Error message of the panic.
         pub error: Option<Error>,

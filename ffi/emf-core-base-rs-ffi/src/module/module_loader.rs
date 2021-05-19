@@ -114,7 +114,7 @@ pub type GetInternalInterfaceFn = TypeWrapper<
 
 /// Interface of a module loader.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct ModuleLoaderInterface {
     pub loader: Option<NonNull<ModuleLoader>>,
     pub add_module_fn: AddModuleFn,
@@ -509,7 +509,7 @@ pub type GetNativeModuleInterfaceFn = TypeWrapper<
 
 /// Interface of a native module loader.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct NativeModuleLoaderInterface {
     pub loader: NonNullConst<ModuleLoaderInterface>,
     pub get_native_module_fn: GetNativeModuleFn,

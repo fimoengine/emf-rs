@@ -1,5 +1,6 @@
 use std::cmp::{min, Ordering};
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Display, Formatter};
+use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 use std::os::raw::c_char;
 use std::slice::{Iter, IterMut};
@@ -303,6 +304,15 @@ where
     }
 }
 
+impl<T, const N: usize> Hash for StaticVec<T, N>
+where
+    T: Copy + Hash + Sized,
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.as_slice().hash(state)
+    }
+}
+
 impl<'a, T, const N: usize> IntoIterator for &'a StaticVec<T, N>
 where
     T: Copy + Sized,
@@ -324,5 +334,15 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
+    }
+}
+
+impl<const N: usize> Display for StaticVec<u8, N> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if let Ok(v) = std::str::from_utf8(self.as_slice()) {
+            write!(f, "{}", v)
+        } else {
+            write!(f, "Invalid string")
+        }
     }
 }

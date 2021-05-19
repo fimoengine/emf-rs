@@ -22,7 +22,7 @@ pub type CBaseFn = fn() -> ();
 
 /// `emf-core-base` interface.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct CBaseInterface {
     pub version: Version,
     pub base_module: Option<NonNull<CBase>>,

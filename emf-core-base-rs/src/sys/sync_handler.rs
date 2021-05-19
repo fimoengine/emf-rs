@@ -4,7 +4,7 @@ use crate::ffi::sys::sync_handler::{SyncHandlerBinding, SyncHandlerInterface};
 use crate::ffi::Bool;
 
 /// A borrowed sync handler.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct SyncHandler<'a> {
     handler: &'a SyncHandlerInterface,
 }

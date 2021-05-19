@@ -55,6 +55,7 @@
 //! }
 //! ```
 use crate::collections::StaticVec;
+use std::fmt::{Display, Formatter};
 
 pub mod api;
 pub mod library_loader;
@@ -73,9 +74,17 @@ pub const DEFAULT_HANDLE: LoaderHandle = LoaderHandle {
 /// Predefined loader handles.
 #[repr(i32)]
 #[non_exhaustive]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub enum PredefinedHandles {
     Native = 0,
+}
+
+impl Display for PredefinedHandles {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PredefinedHandles::Native => write!(f, "Native"),
+        }
+    }
 }
 
 /// Character type of a windows path.
@@ -94,30 +103,57 @@ pub type OSPathChar = OSPathCharWindows;
 
 /// Handle to a library.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct LibraryHandle {
     pub id: i32,
 }
 
+impl Display for LibraryHandle {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.id)
+    }
+}
+
 /// Handle to a loader.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct LoaderHandle {
     pub id: i32,
 }
 
+impl Display for LoaderHandle {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.id)
+    }
+}
+
 /// Internal handle to a library.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct InternalHandle {
     pub id: isize,
 }
 
+impl Display for InternalHandle {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.id)
+    }
+}
+
 /// A symbol from a library.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Symbol<T> {
     pub symbol: T,
+}
+
+impl<T> Display for Symbol<T>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", &self.symbol)
+    }
 }
 
 /// Library type.

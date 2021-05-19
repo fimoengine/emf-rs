@@ -17,7 +17,7 @@ pub type UnlockFn = TypeWrapper<unsafe extern "C-unwind" fn(handler: Option<NonN
 
 /// Interface of a sync handler.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct SyncHandlerInterface {
     pub handler: Option<NonNull<SyncHandler>>,
     pub lock_fn: LockFn,

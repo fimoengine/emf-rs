@@ -65,7 +65,7 @@ pub type GetExportableInterfacesFn = TypeWrapper<
 
 /// Interface of a native module.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct NativeModuleInterface {
     pub load_fn: LoadFn,
     pub unload_fn: UnloadFn,

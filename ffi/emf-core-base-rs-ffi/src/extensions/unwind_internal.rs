@@ -69,7 +69,7 @@ pub type GetPanicFn = TypeWrapper<
 
 /// Extension interface.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct UnwindInternalInterface {
     pub set_context_fn: SetContextFn,
     pub get_context_fn: GetContextFn,

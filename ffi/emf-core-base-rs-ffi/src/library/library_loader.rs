@@ -52,7 +52,7 @@ pub type GetInternalInterfaceFn = TypeWrapper<
 
 /// Interface of a library loader.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct LibraryLoaderInterface {
     pub loader: Option<NonNull<LibraryLoader>>,
     pub load_fn: LoadFn,
@@ -253,7 +253,7 @@ pub type LoadExtFn = LoadExtFnWindows;
 
 /// Interface of a native library loader.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct NativeLibraryLoaderInterface {
     pub loader: NonNullConst<LibraryLoaderInterface>,
     pub load_ext_fn: LoadExtFn,
