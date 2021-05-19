@@ -11,7 +11,7 @@ pub type MutSpan<T> = Span<T, true>;
 
 /// A view over a continuous region of data, akin to `&[T]` and `&mut [T]`.
 #[repr(C)]
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, Debug)]
 pub struct Span<T, const MUT: bool>
 where
     T: Copy + Sized,
@@ -196,6 +196,15 @@ where
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
+    }
+}
+
+impl<T, const MUT: bool> PartialEq for Span<T, MUT>
+where
+    T: Copy + PartialEq + Sized,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.as_ref().eq(other.as_ref())
     }
 }
 
