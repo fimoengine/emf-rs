@@ -63,7 +63,7 @@ impl From<crate::ffi::errors::ErrorInfo> for ErrorInfo {
 #[derive(Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Error<O> {
     _error: ManuallyDrop<ErrorFFI>,
-    _ownership: PhantomData<*const O>,
+    _ownership: PhantomData<fn() -> O>,
 }
 
 impl<O> Drop for Error<O> {

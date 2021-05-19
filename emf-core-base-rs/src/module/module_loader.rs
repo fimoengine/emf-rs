@@ -336,7 +336,7 @@ pub trait ModuleLoaderAPI<'a> {
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct ModuleLoader<T, O> {
     _loader: T,
-    _ownership: PhantomData<*const O>,
+    _ownership: PhantomData<fn() -> O>,
 }
 
 impl<'a, T, O> Deref for ModuleLoader<T, O>

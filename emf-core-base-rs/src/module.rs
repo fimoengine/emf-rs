@@ -68,7 +68,7 @@ pub const DEFAULT_HANDLE: Loader<'static, BorrowMutable<'static>> =
 pub struct Module<'a, O> {
     _handle: ModuleHandle,
     _lifetime: PhantomData<&'a ModuleHandle>,
-    _ownership: PhantomData<*const O>,
+    _ownership: PhantomData<fn() -> O>,
 }
 
 impl<'a, O> Module<'a, O>
@@ -122,7 +122,7 @@ impl<O> Display for Module<'_, O> {
 pub struct Loader<'a, O> {
     _handle: LoaderHandle,
     _lifetime: PhantomData<&'a LoaderHandle>,
-    _ownership: PhantomData<*const O>,
+    _ownership: PhantomData<fn() -> O>,
 }
 
 impl<'a, O> Loader<'a, O>
@@ -175,7 +175,7 @@ impl<O> Display for Loader<'_, O> {
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct InternalModule<O> {
     _handle: InternalHandle,
-    _ownership: PhantomData<*const O>,
+    _ownership: PhantomData<fn() -> O>,
 }
 
 impl<O> InternalModule<O>

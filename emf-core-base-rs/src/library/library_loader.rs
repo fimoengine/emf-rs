@@ -160,7 +160,7 @@ pub trait LibraryLoaderAPI<'a> {
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct LibraryLoader<T, O> {
     _loader: T,
-    _ownership: PhantomData<*const O>,
+    _ownership: PhantomData<fn() -> O>,
 }
 
 impl<'a, T, O> Deref for LibraryLoader<T, O>
