@@ -100,6 +100,9 @@ where
     }
 }
 
+unsafe impl<T, const MUT: bool> Send for Span<T, MUT> where T: Copy + Sized + Send {}
+unsafe impl<T, const MUT: bool> Sync for Span<T, MUT> where T: Copy + Sized + Sync {}
+
 impl<T, const MUT: bool> AsRef<[T]> for Span<T, MUT>
 where
     T: Copy + Sized,

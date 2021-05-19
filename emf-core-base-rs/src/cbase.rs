@@ -30,11 +30,16 @@ pub struct CBaseRef<'interface> {
     _phantom: PhantomData<&'interface CBaseInterface>,
 }
 
+unsafe impl Send for CBaseRef<'_> {}
+
 /// Owned `emf-core-base` interface.
 #[derive(Debug)]
 pub struct CBase<'interface> {
     _interface: UnsafeCell<CBaseRef<'interface>>,
 }
+
+unsafe impl Send for CBase<'_> {}
+unsafe impl Sync for CBase<'_> {}
 
 impl CBaseRef<'_> {
     /// Constructs itself using the native interface.

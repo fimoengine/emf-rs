@@ -150,6 +150,9 @@ where
     }
 }
 
+unsafe impl<T, const N: usize> Send for StaticVec<T, N> where T: Copy + Sized + Send {}
+unsafe impl<T, const N: usize> Sync for StaticVec<T, N> where T: Copy + Sized + Sync {}
+
 impl<T, const N: usize> AsMut<[T]> for StaticVec<T, N>
 where
     T: Copy + Sized,

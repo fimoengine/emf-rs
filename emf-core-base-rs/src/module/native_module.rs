@@ -21,7 +21,7 @@ use std::ptr::NonNull;
 pub struct NativeModuleInstance<'a, O> {
     _handle: Option<NonNull<NativeModuleFFI>>,
     _phantom: PhantomData<&'a ()>,
-    _ownership: PhantomData<*const O>,
+    _ownership: PhantomData<fn() -> O>,
 }
 
 unsafe impl<O> Send for NativeModuleInstance<'_, O> {}
@@ -72,7 +72,7 @@ impl NativeModuleInstance<'_, Owned> {
 pub struct NativeModule<'a, O> {
     _interface: NonNullConst<NativeModuleInterfaceFFI>,
     _phantom: PhantomData<&'a ()>,
-    _ownership: PhantomData<*const O>,
+    _ownership: PhantomData<fn() -> O>,
 }
 
 unsafe impl<O> Send for NativeModule<'_, O> {}
