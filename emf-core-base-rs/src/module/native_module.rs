@@ -17,7 +17,7 @@ use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 
 /// An instance from a native module.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct NativeModuleInstance<'a, O> {
     _handle: Option<NonNull<NativeModuleFFI>>,
     _phantom: PhantomData<&'a ()>,
@@ -68,7 +68,7 @@ impl NativeModuleInstance<'_, Owned> {
 }
 
 /// A native module.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct NativeModule<'a, O> {
     _interface: NonNullConst<NativeModuleInterfaceFFI>,
     _phantom: PhantomData<&'a ()>,

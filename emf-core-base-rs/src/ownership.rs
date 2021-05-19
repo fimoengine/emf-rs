@@ -11,15 +11,15 @@ pub trait ImmutableAccessIdentifier: AccessIdentifier {}
 pub trait MutableAccessIdentifier: ImmutableAccessIdentifier {}
 
 /// Identifier for `owned` types.
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Owned {}
 
 /// Identifier for `mutably borrowed` types.
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct BorrowMutable<'a>(PhantomData<&'a ()>);
 
 /// Identifier for `borrowed` types.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct BorrowImmutable<'a>(PhantomData<&'a ()>);
 
 impl AccessIdentifier for Owned {}

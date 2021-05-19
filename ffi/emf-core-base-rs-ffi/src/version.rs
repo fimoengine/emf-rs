@@ -42,6 +42,7 @@
 //!     }
 //! }
 //! ```
+use std::fmt::{Display, Formatter};
 
 pub mod api;
 
@@ -79,16 +80,26 @@ pub const VERSION: Version = Version {
 /// Errors of the version api.
 #[repr(i8)]
 #[non_exhaustive]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub enum ReleaseType {
     Stable = 0,
     Unstable = 1,
     Beta = 2,
 }
 
+impl Display for ReleaseType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ReleaseType::Stable => write!(f, "Stable"),
+            ReleaseType::Unstable => write!(f, "Unstable"),
+            ReleaseType::Beta => write!(f, "Beta"),
+        }
+    }
+}
+
 /// A version.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Version {
     pub major: i32,
     pub minor: i32,
@@ -96,4 +107,30 @@ pub struct Version {
     pub build: i64,
     pub release_number: i8,
     pub release_type: ReleaseType,
+}
+
+impl Display for Version {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self.release_type {
+            ReleaseType::Stable => {
+                write!(
+                    f,
+                    "{}.{}.{} Build {}",
+                    self.major, self.minor, self.patch, self.build
+                )
+            }
+            _ => {
+                write!(
+                    f,
+                    "{}.{}.{} {} {} Build {}",
+                    self.major,
+                    self.minor,
+                    self.patch,
+                    self.release_type,
+                    self.release_number,
+                    self.build
+                )
+            }
+        }
+    }
 }

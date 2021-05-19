@@ -22,11 +22,11 @@ pub mod extensions;
 static mut INTERFACE: MaybeUninit<CBaseRef<'static>> = MaybeUninit::uninit();
 
 /// Type indicating that dropping unlocks the interface.
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub struct Unlock {}
 
 /// Type indicating that dropping does not unlock the interface.
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub struct ForgetUnlock {}
 
 impl Drop for Unlock {
@@ -36,7 +36,7 @@ impl Drop for Unlock {
 }
 
 /// A token indicating a locked interface.
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub struct LockToken<T> {
     _phantom: T,
 }

@@ -43,13 +43,14 @@ pub use crate::ffi::library::LOADER_TYPE_MAX_LENGTH;
 pub use crate::ffi::library::NATIVE_LIBRARY_TYPE_NAME;
 
 pub use api::LibraryAPI;
+use std::fmt::{Display, Formatter};
 
 /// Handle of the default loader.
 pub const DEFAULT_HANDLE: Loader<'static, BorrowMutable<'static>> =
     unsafe { Loader::new(crate::ffi::library::DEFAULT_HANDLE) };
 
 /// A library handle.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Library<'a, O> {
     _handle: LibraryHandle,
     _lifetime: PhantomData<&'a LibraryHandle>,
@@ -96,8 +97,14 @@ impl<'a> Library<'a, Owned> {
     }
 }
 
+impl<O> Display for Library<'_, O> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", &self._handle)
+    }
+}
+
 /// A loader handle.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Loader<'a, O> {
     _handle: LoaderHandle,
     _lifetime: PhantomData<&'a LoaderHandle>,
@@ -144,8 +151,14 @@ impl<'a> Loader<'a, Owned> {
     }
 }
 
+impl<O> Display for Loader<'_, O> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", &self._handle)
+    }
+}
+
 /// A loader handle.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct InternalLibrary<O> {
     _handle: InternalHandle,
     _ownership: PhantomData<*const O>,
@@ -190,8 +203,14 @@ impl InternalLibrary<Owned> {
     }
 }
 
+impl<O> Display for InternalLibrary<O> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", &self._handle)
+    }
+}
+
 /// A library symbol.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Symbol<'a, T> {
     _symbol: T,
     _phantom: PhantomData<&'a ()>,
@@ -218,5 +237,14 @@ impl<T> AsRef<T> for Symbol<'_, &T> {
     #[inline]
     fn as_ref(&self) -> &T {
         self._symbol
+    }
+}
+
+impl<T> Display for Symbol<'_, T>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", &self._symbol)
     }
 }

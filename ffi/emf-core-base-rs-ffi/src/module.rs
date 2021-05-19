@@ -71,6 +71,7 @@
 use crate::collections::{ConstSpan, StaticVec};
 use crate::version::Version;
 use std::ffi::c_void;
+use std::fmt::{Display, Formatter};
 use std::ptr::NonNull;
 
 pub mod api;
@@ -106,45 +107,81 @@ pub const MODULE_LOADER_DEFAULT_HANDLE: LoaderHandle = LoaderHandle {
 /// Predefined loader handles.
 #[repr(i32)]
 #[non_exhaustive]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub enum PredefinedHandles {
     Native = 0,
+}
+
+impl Display for PredefinedHandles {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PredefinedHandles::Native => write!(f, "Native"),
+        }
+    }
 }
 
 /// Status of a module.
 #[repr(i32)]
 #[non_exhaustive]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub enum ModuleStatus {
     Unloaded = 0,
     Terminated = 1,
     Ready = 2,
 }
 
+impl Display for ModuleStatus {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ModuleStatus::Unloaded => write!(f, "Unloaded"),
+            ModuleStatus::Terminated => write!(f, "Terminated"),
+            ModuleStatus::Ready => write!(f, "Ready"),
+        }
+    }
+}
+
 /// Handle of a module.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct ModuleHandle {
     pub id: i32,
 }
 
+impl Display for ModuleHandle {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.id)
+    }
+}
+
 /// Handle of a module loader.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct LoaderHandle {
     pub id: i32,
 }
 
+impl Display for LoaderHandle {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.id)
+    }
+}
+
 /// Internal handle of a module.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct InternalHandle {
     pub id: isize,
 }
 
+impl Display for InternalHandle {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.id)
+    }
+}
+
 /// Interface from a module.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Interface {
     pub interface: NonNull<c_void>,
 }
@@ -166,17 +203,36 @@ pub type InterfaceExtension = StaticVec<u8, INTERFACE_EXTENSION_NAME_MAX_LENGTH>
 
 /// Information regarding a module.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct ModuleInfo {
     pub name: ModuleName,
     pub version: ModuleVersion,
 }
 
+impl Display for ModuleInfo {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}, {}", &self.name, &self.version)
+    }
+}
+
 /// Information regarding an interface.
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct InterfaceDescriptor {
     pub name: InterfaceName,
     pub version: Version,
     pub extensions: ConstSpan<InterfaceExtension>,
+}
+
+impl Display for InterfaceDescriptor {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let extensions: Vec<String> = self
+            .extensions
+            .as_ref()
+            .iter()
+            .map(|ext| format!("{}", ext))
+            .collect();
+
+        write!(f, "{}{:?}, {}", &self.name, extensions, &self.version)
+    }
 }

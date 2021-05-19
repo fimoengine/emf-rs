@@ -57,13 +57,14 @@ pub use crate::ffi::module::NATIVE_MODULE_INTERFACE_SYMBOL_NAME;
 pub use crate::ffi::module::NATIVE_MODULE_TYPE_NAME;
 
 pub use api::ModuleAPI;
+use std::fmt::{Display, Formatter};
 
 /// Handle of the default loader.
 pub const DEFAULT_HANDLE: Loader<'static, BorrowMutable<'static>> =
     unsafe { Loader::new(crate::ffi::module::MODULE_LOADER_DEFAULT_HANDLE) };
 
 /// A module handle.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Module<'a, O> {
     _handle: ModuleHandle,
     _lifetime: PhantomData<&'a ModuleHandle>,
@@ -110,8 +111,14 @@ impl<'a> Module<'a, Owned> {
     }
 }
 
+impl<O> Display for Module<'_, O> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", &self._handle)
+    }
+}
+
 /// A loader handle.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Loader<'a, O> {
     _handle: LoaderHandle,
     _lifetime: PhantomData<&'a LoaderHandle>,
@@ -158,8 +165,14 @@ impl<'a> Loader<'a, Owned> {
     }
 }
 
+impl<O> Display for Loader<'_, O> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", &self._handle)
+    }
+}
+
 /// A loader handle.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct InternalModule<O> {
     _handle: InternalHandle,
     _ownership: PhantomData<*const O>,
@@ -204,8 +217,14 @@ impl InternalModule<Owned> {
     }
 }
 
+impl<O> Display for InternalModule<O> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", &self._handle)
+    }
+}
+
 /// Interface from a module.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Interface<'a, T> {
     _interface: T,
     _phantom: PhantomData<&'a ()>,
@@ -232,5 +251,14 @@ impl<T> Deref for Interface<'_, T> {
 impl<T> DerefMut for Interface<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self._interface
+    }
+}
+
+impl<T> Display for Interface<'_, T>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", &self._interface)
     }
 }

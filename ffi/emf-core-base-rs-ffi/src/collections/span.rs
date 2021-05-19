@@ -1,3 +1,4 @@
+use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 use std::slice::{Iter, IterMut};
@@ -160,6 +161,15 @@ where
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.as_mut()
+    }
+}
+
+impl<T, const MUT: bool> Hash for Span<T, MUT>
+where
+    T: Copy + Hash + Sized,
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.as_ref().hash(state)
     }
 }
 
