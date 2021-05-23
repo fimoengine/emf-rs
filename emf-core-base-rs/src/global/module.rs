@@ -58,7 +58,7 @@ pub fn register_loader<'loader, LT, L, T>(
     mod_type: impl AsRef<str>,
 ) -> Result<Loader<'static, Owned>, Error<Owned>>
 where
-    L: ModuleLoaderAPI<'static>,
+    L: ModuleLoaderAPI<'static> + ModuleLoaderABICompat,
     ModuleLoader<L, Owned>: From<&'loader LT>,
 {
     ModuleAPI::register_loader(get_mut_interface(), loader, mod_type)
@@ -101,7 +101,7 @@ where
     O: ImmutableAccessIdentifier,
     L: ModuleLoaderAPI<'loader> + ModuleLoaderABICompat,
 {
-    ModuleAPI::get_loader_interface(get_mut_interface(), loader)
+    ModuleAPI::get_loader_interface(get_interface_glob(), loader)
 }
 
 /// Fetches the handle of the loader associated with a module type.

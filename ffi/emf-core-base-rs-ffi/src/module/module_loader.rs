@@ -3,7 +3,7 @@
 //! Any object that can be wrapped into a [ModuleLoaderInterface] can be used as a library loader.
 use crate::collections::{ConstSpan, NonNullConst, Result};
 use crate::errors::Error;
-use crate::library::OSPathChar;
+use crate::library::OSPathString;
 use crate::module::native_module::{NativeModule, NativeModuleInterface};
 use crate::module::{Interface, InterfaceDescriptor, InternalHandle, ModuleInfo, ModuleStatus};
 use crate::TypeWrapper;
@@ -19,7 +19,7 @@ pub struct ModuleLoader {
 pub type AddModuleFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         loader: Option<NonNull<ModuleLoader>>,
-        path: NonNullConst<OSPathChar>,
+        path: OSPathString,
     ) -> Result<InternalHandle, Error>,
 >;
 
@@ -84,7 +84,7 @@ pub type GetModulePathFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         loader: Option<NonNull<ModuleLoader>>,
         handle: InternalHandle,
-    ) -> Result<NonNullConst<OSPathChar>, Error>,
+    ) -> Result<OSPathString, Error>,
 >;
 
 pub type GetLoadDependenciesFn = TypeWrapper<
@@ -108,15 +108,14 @@ pub type GetExportableInterfacesFn = TypeWrapper<
     ) -> Result<ConstSpan<InterfaceDescriptor>, Error>,
 >;
 
-pub type GetInternalInterfaceFn = TypeWrapper<
+pub type GetExtendedVTableFn = TypeWrapper<
     unsafe extern "C-unwind" fn(loader: Option<NonNull<ModuleLoader>>) -> NonNullConst<c_void>,
 >;
 
 /// Interface of a module loader.
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
-pub struct ModuleLoaderInterface {
-    pub loader: Option<NonNull<ModuleLoader>>,
+pub struct ModuleLoaderInterfaceVTable {
     pub add_module_fn: AddModuleFn,
     pub remove_module_fn: RemoveModuleFn,
     pub load_fn: LoadFn,
@@ -130,7 +129,15 @@ pub struct ModuleLoaderInterface {
     pub get_load_dependencies_fn: GetLoadDependenciesFn,
     pub get_runtime_dependencies_fn: GetRuntimeDependenciesFn,
     pub get_exportable_interfaces_fn: GetExportableInterfacesFn,
-    pub get_internal_interface_fn: GetInternalInterfaceFn,
+    pub get_extended_vtable_fn: GetExtendedVTableFn,
+}
+
+/// Interface of a module loader.
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+pub struct ModuleLoaderInterface {
+    pub loader: Option<NonNull<ModuleLoader>>,
+    pub vtable: NonNullConst<ModuleLoaderInterfaceVTable>,
 }
 
 unsafe impl Send for ModuleLoaderInterface {}
@@ -154,10 +161,7 @@ pub trait ModuleLoaderBinding {
     /// The function crosses the ffi boundary.
     /// Direct usage of a [ModuleLoaderBinding] may break some invariants
     /// of the module api, if not handled with care.
-    unsafe fn add_module(
-        &mut self,
-        path: NonNullConst<OSPathChar>,
-    ) -> Result<InternalHandle, Error>;
+    unsafe fn add_module(&mut self, path: OSPathString) -> Result<InternalHandle, Error>;
 
     /// Removes a module.
     ///
@@ -320,10 +324,7 @@ pub trait ModuleLoaderBinding {
     /// The function crosses the ffi boundary.
     /// Direct usage of a [ModuleLoaderBinding] may break some invariants
     /// of the module api, if not handled with care.
-    unsafe fn get_module_path(
-        &self,
-        handle: InternalHandle,
-    ) -> Result<NonNullConst<OSPathChar>, Error>;
+    unsafe fn get_module_path(&self, handle: InternalHandle) -> Result<OSPathString, Error>;
 
     /// Fetches the load dependencies of a module.
     ///
@@ -385,57 +386,54 @@ pub trait ModuleLoaderBinding {
         handle: InternalHandle,
     ) -> Result<ConstSpan<InterfaceDescriptor>, Error>;
 
-    /// Fetches a pointer to the internal loader interface.
+    /// Fetches a pointer to the extended loader vtable.
     ///
     /// # Return
     ///
-    /// Pointer to the loader interface.
+    /// Pointer to the loader vtable.
     ///
     /// # Safety
     ///
     /// The function crosses the ffi boundary.
     /// Direct usage of a [ModuleLoaderBinding] may break some invariants
     /// of the module api, if not handled with care.
-    unsafe fn get_internal_interface(&self) -> NonNullConst<c_void>;
+    unsafe fn get_extended_vtable(&self) -> NonNullConst<c_void>;
 }
 
 impl ModuleLoaderBinding for ModuleLoaderInterface {
     #[inline]
-    unsafe fn add_module(
-        &mut self,
-        path: NonNullConst<OSPathChar>,
-    ) -> Result<InternalHandle, Error> {
-        (self.add_module_fn)(self.loader, path)
+    unsafe fn add_module(&mut self, path: OSPathString) -> Result<InternalHandle, Error> {
+        (self.vtable.as_ref().add_module_fn)(self.loader, path)
     }
 
     #[inline]
     unsafe fn remove_module(&mut self, handle: InternalHandle) -> Result<i8, Error> {
-        (self.remove_module_fn)(self.loader, handle)
+        (self.vtable.as_ref().remove_module_fn)(self.loader, handle)
     }
 
     #[inline]
     unsafe fn load(&mut self, handle: InternalHandle) -> Result<i8, Error> {
-        (self.load_fn)(self.loader, handle)
+        (self.vtable.as_ref().load_fn)(self.loader, handle)
     }
 
     #[inline]
     unsafe fn unload(&mut self, handle: InternalHandle) -> Result<i8, Error> {
-        (self.unload_fn)(self.loader, handle)
+        (self.vtable.as_ref().unload_fn)(self.loader, handle)
     }
 
     #[inline]
     unsafe fn initialize(&mut self, handle: InternalHandle) -> Result<i8, Error> {
-        (self.initialize_fn)(self.loader, handle)
+        (self.vtable.as_ref().initialize_fn)(self.loader, handle)
     }
 
     #[inline]
     unsafe fn terminate(&mut self, handle: InternalHandle) -> Result<i8, Error> {
-        (self.terminate_fn)(self.loader, handle)
+        (self.vtable.as_ref().terminate_fn)(self.loader, handle)
     }
 
     #[inline]
     unsafe fn fetch_status(&self, handle: InternalHandle) -> Result<ModuleStatus, Error> {
-        (self.fetch_status_fn)(self.loader, handle)
+        (self.vtable.as_ref().fetch_status_fn)(self.loader, handle)
     }
 
     #[inline]
@@ -444,7 +442,7 @@ impl ModuleLoaderBinding for ModuleLoaderInterface {
         handle: InternalHandle,
         interface: NonNullConst<InterfaceDescriptor>,
     ) -> Result<Interface, Error> {
-        (self.get_interface_fn)(self.loader, handle, interface)
+        (self.vtable.as_ref().get_interface_fn)(self.loader, handle, interface)
     }
 
     #[inline]
@@ -452,15 +450,12 @@ impl ModuleLoaderBinding for ModuleLoaderInterface {
         &self,
         handle: InternalHandle,
     ) -> Result<NonNullConst<ModuleInfo>, Error> {
-        (self.get_module_info_fn)(self.loader, handle)
+        (self.vtable.as_ref().get_module_info_fn)(self.loader, handle)
     }
 
     #[inline]
-    unsafe fn get_module_path(
-        &self,
-        handle: InternalHandle,
-    ) -> Result<NonNullConst<OSPathChar>, Error> {
-        (self.get_module_path_fn)(self.loader, handle)
+    unsafe fn get_module_path(&self, handle: InternalHandle) -> Result<OSPathString, Error> {
+        (self.vtable.as_ref().get_module_path_fn)(self.loader, handle)
     }
 
     #[inline]
@@ -468,7 +463,7 @@ impl ModuleLoaderBinding for ModuleLoaderInterface {
         &self,
         handle: InternalHandle,
     ) -> Result<ConstSpan<InterfaceDescriptor>, Error> {
-        (self.get_load_dependencies_fn)(self.loader, handle)
+        (self.vtable.as_ref().get_load_dependencies_fn)(self.loader, handle)
     }
 
     #[inline]
@@ -476,7 +471,7 @@ impl ModuleLoaderBinding for ModuleLoaderInterface {
         &self,
         handle: InternalHandle,
     ) -> Result<ConstSpan<InterfaceDescriptor>, Error> {
-        (self.get_runtime_dependencies_fn)(self.loader, handle)
+        (self.vtable.as_ref().get_runtime_dependencies_fn)(self.loader, handle)
     }
 
     #[inline]
@@ -484,12 +479,12 @@ impl ModuleLoaderBinding for ModuleLoaderInterface {
         &self,
         handle: InternalHandle,
     ) -> Result<ConstSpan<InterfaceDescriptor>, Error> {
-        (self.get_exportable_interfaces_fn)(self.loader, handle)
+        (self.vtable.as_ref().get_exportable_interfaces_fn)(self.loader, handle)
     }
 
     #[inline]
-    unsafe fn get_internal_interface(&self) -> NonNullConst<c_void> {
-        (self.get_internal_interface_fn)(self.loader)
+    unsafe fn get_extended_vtable(&self) -> NonNullConst<c_void> {
+        (self.vtable.as_ref().get_extended_vtable_fn)(self.loader)
     }
 }
 
@@ -510,10 +505,18 @@ pub type GetNativeModuleInterfaceFn = TypeWrapper<
 /// Interface of a native module loader.
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
-pub struct NativeModuleLoaderInterface {
-    pub loader: NonNullConst<ModuleLoaderInterface>,
+pub struct NativeModuleLoaderVTable {
+    pub loader_vtable: NonNullConst<ModuleLoaderInterfaceVTable>,
     pub get_native_module_fn: GetNativeModuleFn,
     pub get_native_module_interface_fn: GetNativeModuleInterfaceFn,
+}
+
+/// Interface of a native module loader.
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+pub struct NativeModuleLoaderInterface {
+    pub loader: Option<NonNull<ModuleLoader>>,
+    pub vtable: NonNullConst<NativeModuleLoaderVTable>,
 }
 
 unsafe impl Send for NativeModuleLoaderInterface {}
@@ -564,41 +567,38 @@ pub trait NativeModuleLoaderBinding: ModuleLoaderBinding {
 
 impl ModuleLoaderBinding for NativeModuleLoaderInterface {
     #[inline]
-    unsafe fn add_module(
-        &mut self,
-        path: NonNullConst<OSPathChar>,
-    ) -> Result<InternalHandle, Error> {
-        self.loader.into_mut().as_mut().add_module(path)
+    unsafe fn add_module(&mut self, path: OSPathString) -> Result<InternalHandle, Error> {
+        (self.vtable.as_ref().loader_vtable.as_ref().add_module_fn)(self.loader, path)
     }
 
     #[inline]
     unsafe fn remove_module(&mut self, handle: InternalHandle) -> Result<i8, Error> {
-        self.loader.into_mut().as_mut().remove_module(handle)
+        (self.vtable.as_ref().loader_vtable.as_ref().remove_module_fn)(self.loader, handle)
     }
 
     #[inline]
     unsafe fn load(&mut self, handle: InternalHandle) -> Result<i8, Error> {
-        self.loader.into_mut().as_mut().load(handle)
+        (self.vtable.as_ref().loader_vtable.as_ref().load_fn)(self.loader, handle)
     }
 
     #[inline]
     unsafe fn unload(&mut self, handle: InternalHandle) -> Result<i8, Error> {
-        self.loader.into_mut().as_mut().unload(handle)
+        (self.vtable.as_ref().loader_vtable.as_ref().unload_fn)(self.loader, handle)
     }
 
     #[inline]
     unsafe fn initialize(&mut self, handle: InternalHandle) -> Result<i8, Error> {
-        self.loader.into_mut().as_mut().initialize(handle)
+        (self.vtable.as_ref().loader_vtable.as_ref().initialize_fn)(self.loader, handle)
     }
 
     #[inline]
     unsafe fn terminate(&mut self, handle: InternalHandle) -> Result<i8, Error> {
-        self.loader.into_mut().as_mut().terminate(handle)
+        (self.vtable.as_ref().loader_vtable.as_ref().terminate_fn)(self.loader, handle)
     }
 
     #[inline]
     unsafe fn fetch_status(&self, handle: InternalHandle) -> Result<ModuleStatus, Error> {
-        self.loader.as_ref().fetch_status(handle)
+        (self.vtable.as_ref().loader_vtable.as_ref().fetch_status_fn)(self.loader, handle)
     }
 
     #[inline]
@@ -607,7 +607,11 @@ impl ModuleLoaderBinding for NativeModuleLoaderInterface {
         handle: InternalHandle,
         interface: NonNullConst<InterfaceDescriptor>,
     ) -> Result<Interface, Error> {
-        self.loader.as_ref().get_interface(handle, interface)
+        (self.vtable.as_ref().loader_vtable.as_ref().get_interface_fn)(
+            self.loader,
+            handle,
+            interface,
+        )
     }
 
     #[inline]
@@ -615,15 +619,22 @@ impl ModuleLoaderBinding for NativeModuleLoaderInterface {
         &self,
         handle: InternalHandle,
     ) -> Result<NonNullConst<ModuleInfo>, Error> {
-        self.loader.as_ref().get_module_info(handle)
+        (self
+            .vtable
+            .as_ref()
+            .loader_vtable
+            .as_ref()
+            .get_module_info_fn)(self.loader, handle)
     }
 
     #[inline]
-    unsafe fn get_module_path(
-        &self,
-        handle: InternalHandle,
-    ) -> Result<NonNullConst<OSPathChar>, Error> {
-        self.loader.as_ref().get_module_path(handle)
+    unsafe fn get_module_path(&self, handle: InternalHandle) -> Result<OSPathString, Error> {
+        (self
+            .vtable
+            .as_ref()
+            .loader_vtable
+            .as_ref()
+            .get_module_path_fn)(self.loader, handle)
     }
 
     #[inline]
@@ -631,7 +642,12 @@ impl ModuleLoaderBinding for NativeModuleLoaderInterface {
         &self,
         handle: InternalHandle,
     ) -> Result<ConstSpan<InterfaceDescriptor>, Error> {
-        self.loader.as_ref().get_load_dependencies(handle)
+        (self
+            .vtable
+            .as_ref()
+            .loader_vtable
+            .as_ref()
+            .get_load_dependencies_fn)(self.loader, handle)
     }
 
     #[inline]
@@ -639,7 +655,12 @@ impl ModuleLoaderBinding for NativeModuleLoaderInterface {
         &self,
         handle: InternalHandle,
     ) -> Result<ConstSpan<InterfaceDescriptor>, Error> {
-        self.loader.as_ref().get_runtime_dependencies(handle)
+        (self
+            .vtable
+            .as_ref()
+            .loader_vtable
+            .as_ref()
+            .get_runtime_dependencies_fn)(self.loader, handle)
     }
 
     #[inline]
@@ -647,12 +668,22 @@ impl ModuleLoaderBinding for NativeModuleLoaderInterface {
         &self,
         handle: InternalHandle,
     ) -> Result<ConstSpan<InterfaceDescriptor>, Error> {
-        self.loader.as_ref().get_exportable_interfaces(handle)
+        (self
+            .vtable
+            .as_ref()
+            .loader_vtable
+            .as_ref()
+            .get_exportable_interfaces_fn)(self.loader, handle)
     }
 
     #[inline]
-    unsafe fn get_internal_interface(&self) -> NonNullConst<c_void> {
-        self.loader.as_ref().get_internal_interface()
+    unsafe fn get_extended_vtable(&self) -> NonNullConst<c_void> {
+        (self
+            .vtable
+            .as_ref()
+            .loader_vtable
+            .as_ref()
+            .get_extended_vtable_fn)(self.loader)
     }
 }
 
@@ -662,7 +693,7 @@ impl NativeModuleLoaderBinding for NativeModuleLoaderInterface {
         &self,
         handle: InternalHandle,
     ) -> Result<Option<NonNull<NativeModule>>, Error> {
-        (self.get_native_module_fn)(self.loader.as_ref().loader, handle)
+        (self.vtable.as_ref().get_native_module_fn)(self.loader, handle)
     }
 
     #[inline]
@@ -670,6 +701,6 @@ impl NativeModuleLoaderBinding for NativeModuleLoaderInterface {
         &self,
         handle: InternalHandle,
     ) -> Result<NonNullConst<NativeModuleInterface>, Error> {
-        (self.get_native_module_interface_fn)(self.loader.as_ref().loader, handle)
+        (self.vtable.as_ref().get_native_module_interface_fn)(self.loader, handle)
     }
 }

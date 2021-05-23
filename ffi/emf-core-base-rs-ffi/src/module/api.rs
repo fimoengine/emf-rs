@@ -3,7 +3,7 @@
 //! The library api is exposed be the [ModuleBinding] trait.
 use crate::collections::{ConstSpan, MutSpan, NonNullConst, Result};
 use crate::errors::Error;
-use crate::library::OSPathChar;
+use crate::library::OSPathString;
 use crate::module::module_loader::ModuleLoaderInterface;
 use crate::module::{
     Interface, InterfaceDescriptor, InternalHandle, LoaderHandle, ModuleHandle, ModuleInfo,
@@ -15,7 +15,7 @@ use std::ptr::NonNull;
 pub type RegisterLoaderFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
-        loader: NonNullConst<ModuleLoaderInterface>,
+        loader: ModuleLoaderInterface,
         mod_type: NonNullConst<ModuleType>,
     ) -> Result<LoaderHandle, Error>,
 >;
@@ -31,7 +31,7 @@ pub type GetLoaderInterfaceFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
         loader: LoaderHandle,
-    ) -> Result<NonNullConst<ModuleLoaderInterface>, Error>,
+    ) -> Result<ModuleLoaderInterface, Error>,
 >;
 
 pub type GetLoaderHandleFromTypeFn = TypeWrapper<
@@ -78,21 +78,21 @@ pub type ExportedInterfaceExistsFn = TypeWrapper<
 pub type GetModulesFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
-        buffer: NonNull<MutSpan<ModuleInfo>>,
+        buffer: MutSpan<ModuleInfo>,
     ) -> Result<usize, Error>,
 >;
 
 pub type GetModuleTypesFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
-        buffer: NonNull<MutSpan<ModuleType>>,
+        buffer: MutSpan<ModuleType>,
     ) -> Result<usize, Error>,
 >;
 
 pub type GetExportedInterfacesFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
-        buffer: NonNull<MutSpan<InterfaceDescriptor>>,
+        buffer: MutSpan<InterfaceDescriptor>,
     ) -> Result<usize, Error>,
 >;
 
@@ -133,7 +133,7 @@ pub type AddModuleFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
         loader: LoaderHandle,
-        path: NonNullConst<OSPathChar>,
+        path: OSPathString,
     ) -> Result<ModuleHandle, Error>,
 >;
 
@@ -228,7 +228,7 @@ pub type GetModulePathFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
         handle: ModuleHandle,
-    ) -> Result<NonNullConst<OSPathChar>, Error>,
+    ) -> Result<OSPathString, Error>,
 >;
 
 pub type GetModuleInfoFn = TypeWrapper<
@@ -265,7 +265,7 @@ pub trait ModuleBinding {
     /// The function is not thread-safe and crosses the ffi boundary.
     unsafe fn register_loader(
         &mut self,
-        loader: NonNullConst<ModuleLoaderInterface>,
+        loader: ModuleLoaderInterface,
         mod_type: NonNullConst<ModuleType>,
     ) -> Result<LoaderHandle, Error>;
 
@@ -300,9 +300,9 @@ pub trait ModuleBinding {
     ///
     /// The function is not thread-safe and crosses the ffi boundary.
     unsafe fn get_loader_interface(
-        &mut self,
+        &self,
         loader: LoaderHandle,
-    ) -> Result<NonNullConst<ModuleLoaderInterface>, Error>;
+    ) -> Result<ModuleLoaderInterface, Error>;
 
     /// Fetches the handle of the loader associated with a module type.
     ///
@@ -422,7 +422,7 @@ pub trait ModuleBinding {
     /// # Safety
     ///
     /// The function is not thread-safe and crosses the ffi boundary.
-    unsafe fn get_modules(&self, buffer: NonNull<MutSpan<ModuleInfo>>) -> Result<usize, Error>;
+    unsafe fn get_modules(&self, buffer: MutSpan<ModuleInfo>) -> Result<usize, Error>;
 
     /// Copies the available module types into a buffer.
     ///
@@ -437,8 +437,7 @@ pub trait ModuleBinding {
     /// # Safety
     ///
     /// The function is not thread-safe and crosses the ffi boundary.
-    unsafe fn get_module_types(&self, buffer: NonNull<MutSpan<ModuleType>>)
-        -> Result<usize, Error>;
+    unsafe fn get_module_types(&self, buffer: MutSpan<ModuleType>) -> Result<usize, Error>;
 
     /// Copies the descriptors of the exported interfaces into a buffer.
     ///
@@ -455,7 +454,7 @@ pub trait ModuleBinding {
     /// The function is not thread-safe and crosses the ffi boundary.
     unsafe fn get_exported_interfaces(
         &self,
-        buffer: NonNull<MutSpan<InterfaceDescriptor>>,
+        buffer: MutSpan<InterfaceDescriptor>,
     ) -> Result<usize, Error>;
 
     /// Fetches the module handle of the exported interface.
@@ -569,7 +568,7 @@ pub trait ModuleBinding {
     unsafe fn add_module(
         &mut self,
         loader: LoaderHandle,
-        path: NonNullConst<OSPathChar>,
+        path: OSPathString,
     ) -> Result<ModuleHandle, Error>;
 
     /// Removes a module.
@@ -793,10 +792,7 @@ pub trait ModuleBinding {
     /// # Safety
     ///
     /// The function is not thread-safe and crosses the ffi boundary.
-    unsafe fn get_module_path(
-        &self,
-        handle: ModuleHandle,
-    ) -> Result<NonNullConst<OSPathChar>, Error>;
+    unsafe fn get_module_path(&self, handle: ModuleHandle) -> Result<OSPathString, Error>;
 
     /// Fetches the module info from a module.
     ///
@@ -841,23 +837,23 @@ impl ModuleBinding for CBaseInterface {
     #[inline]
     unsafe fn register_loader(
         &mut self,
-        loader: NonNullConst<ModuleLoaderInterface>,
+        loader: ModuleLoaderInterface,
         mod_type: NonNullConst<ModuleType>,
     ) -> Result<LoaderHandle, Error> {
-        (self.module_register_loader_fn)(self.base_module, loader, mod_type)
+        (self.vtable.as_ref().module_register_loader_fn)(self.base_module, loader, mod_type)
     }
 
     #[inline]
     unsafe fn unregister_loader(&mut self, loader: LoaderHandle) -> Result<i8, Error> {
-        (self.module_unregister_loader_fn)(self.base_module, loader)
+        (self.vtable.as_ref().module_unregister_loader_fn)(self.base_module, loader)
     }
 
     #[inline]
     unsafe fn get_loader_interface(
-        &mut self,
+        &self,
         loader: LoaderHandle,
-    ) -> Result<NonNullConst<ModuleLoaderInterface>, Error> {
-        (self.module_get_loader_interface_fn)(self.base_module, loader)
+    ) -> Result<ModuleLoaderInterface, Error> {
+        (self.vtable.as_ref().module_get_loader_interface_fn)(self.base_module, loader)
     }
 
     #[inline]
@@ -865,7 +861,7 @@ impl ModuleBinding for CBaseInterface {
         &self,
         mod_type: NonNullConst<ModuleType>,
     ) -> Result<LoaderHandle, Error> {
-        (self.module_get_loader_handle_from_type_fn)(self.base_module, mod_type)
+        (self.vtable.as_ref().module_get_loader_handle_from_type_fn)(self.base_module, mod_type)
     }
 
     #[inline]
@@ -873,32 +869,32 @@ impl ModuleBinding for CBaseInterface {
         &self,
         handle: ModuleHandle,
     ) -> Result<LoaderHandle, Error> {
-        (self.module_get_loader_handle_from_module_fn)(self.base_module, handle)
+        (self.vtable.as_ref().module_get_loader_handle_from_module_fn)(self.base_module, handle)
     }
 
     #[inline]
     unsafe fn get_num_modules(&self) -> usize {
-        (self.module_get_num_modules_fn)(self.base_module)
+        (self.vtable.as_ref().module_get_num_modules_fn)(self.base_module)
     }
 
     #[inline]
     unsafe fn get_num_loaders(&self) -> usize {
-        (self.module_get_num_loaders_fn)(self.base_module)
+        (self.vtable.as_ref().module_get_num_loaders_fn)(self.base_module)
     }
 
     #[inline]
     unsafe fn get_num_exported_interfaces(&self) -> usize {
-        (self.module_get_num_exported_interfaces_fn)(self.base_module)
+        (self.vtable.as_ref().module_get_num_exported_interfaces_fn)(self.base_module)
     }
 
     #[inline]
     unsafe fn module_exists(&self, handle: ModuleHandle) -> Bool {
-        (self.module_module_exists_fn)(self.base_module, handle)
+        (self.vtable.as_ref().module_module_exists_fn)(self.base_module, handle)
     }
 
     #[inline]
     unsafe fn type_exists(&self, mod_type: NonNullConst<ModuleType>) -> Bool {
-        (self.module_type_exists_fn)(self.base_module, mod_type)
+        (self.vtable.as_ref().module_type_exists_fn)(self.base_module, mod_type)
     }
 
     #[inline]
@@ -906,28 +902,25 @@ impl ModuleBinding for CBaseInterface {
         &self,
         interface: NonNullConst<InterfaceDescriptor>,
     ) -> Bool {
-        (self.module_exported_interface_exists_fn)(self.base_module, interface)
+        (self.vtable.as_ref().module_exported_interface_exists_fn)(self.base_module, interface)
     }
 
     #[inline]
-    unsafe fn get_modules(&self, buffer: NonNull<MutSpan<ModuleInfo>>) -> Result<usize, Error> {
-        (self.module_get_modules_fn)(self.base_module, buffer)
+    unsafe fn get_modules(&self, buffer: MutSpan<ModuleInfo>) -> Result<usize, Error> {
+        (self.vtable.as_ref().module_get_modules_fn)(self.base_module, buffer)
     }
 
     #[inline]
-    unsafe fn get_module_types(
-        &self,
-        buffer: NonNull<MutSpan<ModuleType>>,
-    ) -> Result<usize, Error> {
-        (self.module_get_module_types_fn)(self.base_module, buffer)
+    unsafe fn get_module_types(&self, buffer: MutSpan<ModuleType>) -> Result<usize, Error> {
+        (self.vtable.as_ref().module_get_module_types_fn)(self.base_module, buffer)
     }
 
     #[inline]
     unsafe fn get_exported_interfaces(
         &self,
-        buffer: NonNull<MutSpan<InterfaceDescriptor>>,
+        buffer: MutSpan<InterfaceDescriptor>,
     ) -> Result<usize, Error> {
-        (self.module_get_exported_interfaces_fn)(self.base_module, buffer)
+        (self.vtable.as_ref().module_get_exported_interfaces_fn)(self.base_module, buffer)
     }
 
     #[inline]
@@ -935,17 +928,17 @@ impl ModuleBinding for CBaseInterface {
         &self,
         interface: NonNullConst<InterfaceDescriptor>,
     ) -> Result<ModuleHandle, Error> {
-        (self.module_get_exported_interface_handle_fn)(self.base_module, interface)
+        (self.vtable.as_ref().module_get_exported_interface_handle_fn)(self.base_module, interface)
     }
 
     #[inline]
     unsafe fn create_module_handle(&mut self) -> ModuleHandle {
-        (self.module_create_module_handle_fn)(self.base_module)
+        (self.vtable.as_ref().module_create_module_handle_fn)(self.base_module)
     }
 
     #[inline]
     unsafe fn remove_module_handle(&mut self, handle: ModuleHandle) -> Result<i8, Error> {
-        (self.module_remove_module_handle_fn)(self.base_module, handle)
+        (self.vtable.as_ref().module_remove_module_handle_fn)(self.base_module, handle)
     }
 
     #[inline]
@@ -955,7 +948,7 @@ impl ModuleBinding for CBaseInterface {
         loader: LoaderHandle,
         internal: InternalHandle,
     ) -> Result<i8, Error> {
-        (self.module_link_module_fn)(self.base_module, handle, loader, internal)
+        (self.vtable.as_ref().module_link_module_fn)(self.base_module, handle, loader, internal)
     }
 
     #[inline]
@@ -963,41 +956,41 @@ impl ModuleBinding for CBaseInterface {
         &self,
         handle: ModuleHandle,
     ) -> Result<InternalHandle, Error> {
-        (self.module_get_internal_module_handle_fn)(self.base_module, handle)
+        (self.vtable.as_ref().module_get_internal_module_handle_fn)(self.base_module, handle)
     }
 
     #[inline]
     unsafe fn add_module(
         &mut self,
         loader: LoaderHandle,
-        path: NonNullConst<OSPathChar>,
+        path: OSPathString,
     ) -> Result<ModuleHandle, Error> {
-        (self.module_add_module_fn)(self.base_module, loader, path)
+        (self.vtable.as_ref().module_add_module_fn)(self.base_module, loader, path)
     }
 
     #[inline]
     unsafe fn remove_module(&mut self, handle: ModuleHandle) -> Result<i8, Error> {
-        (self.module_remove_module_fn)(self.base_module, handle)
+        (self.vtable.as_ref().module_remove_module_fn)(self.base_module, handle)
     }
 
     #[inline]
     unsafe fn load(&mut self, handle: ModuleHandle) -> Result<i8, Error> {
-        (self.module_load_fn)(self.base_module, handle)
+        (self.vtable.as_ref().module_load_fn)(self.base_module, handle)
     }
 
     #[inline]
     unsafe fn unload(&mut self, handle: ModuleHandle) -> Result<i8, Error> {
-        (self.module_unload_fn)(self.base_module, handle)
+        (self.vtable.as_ref().module_unload_fn)(self.base_module, handle)
     }
 
     #[inline]
     unsafe fn initialize(&mut self, handle: ModuleHandle) -> Result<i8, Error> {
-        (self.module_initialize_fn)(self.base_module, handle)
+        (self.vtable.as_ref().module_initialize_fn)(self.base_module, handle)
     }
 
     #[inline]
     unsafe fn terminate(&mut self, handle: ModuleHandle) -> Result<i8, Error> {
-        (self.module_terminate_fn)(self.base_module, handle)
+        (self.vtable.as_ref().module_terminate_fn)(self.base_module, handle)
     }
 
     #[inline]
@@ -1006,7 +999,7 @@ impl ModuleBinding for CBaseInterface {
         handle: ModuleHandle,
         interface: NonNullConst<InterfaceDescriptor>,
     ) -> Result<i8, Error> {
-        (self.module_add_dependency_fn)(self.base_module, handle, interface)
+        (self.vtable.as_ref().module_add_dependency_fn)(self.base_module, handle, interface)
     }
 
     #[inline]
@@ -1015,7 +1008,7 @@ impl ModuleBinding for CBaseInterface {
         handle: ModuleHandle,
         interface: NonNullConst<InterfaceDescriptor>,
     ) -> Result<i8, Error> {
-        (self.module_remove_dependency_fn)(self.base_module, handle, interface)
+        (self.vtable.as_ref().module_remove_dependency_fn)(self.base_module, handle, interface)
     }
 
     #[inline]
@@ -1024,7 +1017,7 @@ impl ModuleBinding for CBaseInterface {
         handle: ModuleHandle,
         interface: NonNullConst<InterfaceDescriptor>,
     ) -> Result<i8, Error> {
-        (self.module_export_interface_fn)(self.base_module, handle, interface)
+        (self.vtable.as_ref().module_export_interface_fn)(self.base_module, handle, interface)
     }
 
     #[inline]
@@ -1032,7 +1025,7 @@ impl ModuleBinding for CBaseInterface {
         &self,
         handle: ModuleHandle,
     ) -> Result<ConstSpan<InterfaceDescriptor>, Error> {
-        (self.module_get_load_dependencies_fn)(self.base_module, handle)
+        (self.vtable.as_ref().module_get_load_dependencies_fn)(self.base_module, handle)
     }
 
     #[inline]
@@ -1040,7 +1033,7 @@ impl ModuleBinding for CBaseInterface {
         &self,
         handle: ModuleHandle,
     ) -> Result<ConstSpan<InterfaceDescriptor>, Error> {
-        (self.module_get_runtime_dependencies_fn)(self.base_module, handle)
+        (self.vtable.as_ref().module_get_runtime_dependencies_fn)(self.base_module, handle)
     }
 
     #[inline]
@@ -1048,20 +1041,17 @@ impl ModuleBinding for CBaseInterface {
         &self,
         handle: ModuleHandle,
     ) -> Result<ConstSpan<InterfaceDescriptor>, Error> {
-        (self.module_get_exportable_interfaces_fn)(self.base_module, handle)
+        (self.vtable.as_ref().module_get_exportable_interfaces_fn)(self.base_module, handle)
     }
 
     #[inline]
     unsafe fn fetch_status(&self, handle: ModuleHandle) -> Result<ModuleStatus, Error> {
-        (self.module_fetch_status_fn)(self.base_module, handle)
+        (self.vtable.as_ref().module_fetch_status_fn)(self.base_module, handle)
     }
 
     #[inline]
-    unsafe fn get_module_path(
-        &self,
-        handle: ModuleHandle,
-    ) -> Result<NonNullConst<OSPathChar>, Error> {
-        (self.module_get_module_path_fn)(self.base_module, handle)
+    unsafe fn get_module_path(&self, handle: ModuleHandle) -> Result<OSPathString, Error> {
+        (self.vtable.as_ref().module_get_module_path_fn)(self.base_module, handle)
     }
 
     #[inline]
@@ -1069,7 +1059,7 @@ impl ModuleBinding for CBaseInterface {
         &self,
         handle: ModuleHandle,
     ) -> Result<NonNullConst<ModuleInfo>, Error> {
-        (self.module_get_module_info_fn)(self.base_module, handle)
+        (self.vtable.as_ref().module_get_module_info_fn)(self.base_module, handle)
     }
 
     #[inline]
@@ -1078,6 +1068,6 @@ impl ModuleBinding for CBaseInterface {
         handle: ModuleHandle,
         interface: NonNullConst<InterfaceDescriptor>,
     ) -> Result<Interface, Error> {
-        (self.module_get_interface_fn)(self.base_module, handle, interface)
+        (self.vtable.as_ref().module_get_interface_fn)(self.base_module, handle, interface)
     }
 }

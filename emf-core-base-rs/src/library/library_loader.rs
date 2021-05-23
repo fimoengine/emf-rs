@@ -1,8 +1,11 @@
 //! API of a library loader.
+use crate::fat_ptr::FatPtr;
 use crate::ffi::collections::NonNullConst;
 use crate::ffi::library::library_loader::{
-    LibraryLoaderBinding, LibraryLoaderInterface, NativeLibraryHandle, NativeLibraryLoaderInterface,
+    LibraryLoader as LibraryLoaderFFI, LibraryLoaderBinding, LibraryLoaderInterface,
+    NativeLibraryHandle, NativeLibraryLoaderInterface,
 };
+use crate::ffi::library::OSPathString;
 use crate::ffi::CBaseFn;
 use crate::library::{InternalLibrary, Symbol};
 use crate::ownership::{
@@ -22,29 +25,29 @@ use std::ptr::NonNull;
 
 /// Trait for identifying library loaders whose data structure is
 /// compatible with the canonical library loader.
-pub trait LibraryLoaderABICompat {}
+pub trait LibraryLoaderABICompat {
+    /// Fetches a fat pointer that can be used with the interface.
+    fn to_raw(&self) -> LibraryLoaderInterface;
+
+    /// Construct a new instance from a fat pointer.
+    ///
+    /// # Safety
+    ///
+    /// This function should not be used directly.
+    unsafe fn from_raw(handler: LibraryLoaderInterface) -> Self;
+}
 
 /// The API of a library loader.
 pub trait LibraryLoaderAPI<'a> {
     /// Type of the internal loader.
-    type InternalLoader;
+    type ExtendedLoader: From<FatPtr<LibraryLoaderFFI, c_void>>;
 
-    /// Fetches a pointer that can be used with the interface.
-    fn to_interface(&self) -> NonNullConst<LibraryLoaderInterface>;
-
-    /// Construct a new instance from a pointer.
+    /// Construct a new instance from an untyped void pointer.
     ///
     /// # Safety
     ///
     /// This function should not be used directly.
-    unsafe fn from_interface(handler: NonNullConst<LibraryLoaderInterface>) -> Self;
-
-    /// Construct a new instance from a void pointer.
-    ///
-    /// # Safety
-    ///
-    /// This function should not be used directly.
-    unsafe fn from_void_ptr(handler: NonNullConst<c_void>) -> Self;
+    unsafe fn from_fat_ptr(ptr: FatPtr<LibraryLoaderFFI, c_void>) -> Self;
 
     /// Loads a library. The resulting handle is unique.
     ///
@@ -142,7 +145,7 @@ pub trait LibraryLoaderAPI<'a> {
     where
         O: ImmutableAccessIdentifier;
 
-    /// Fetches a pointer to the internal interface.
+    /// Fetches the extended loader.
     ///
     /// # Return
     ///
@@ -153,7 +156,7 @@ pub trait LibraryLoaderAPI<'a> {
     /// The function crosses the ffi boundary.
     /// Direct usage of a [LibraryLoaderAPI] may break some invariants
     /// of the library api, if not handled with care.
-    unsafe fn get_internal_interface(&self) -> Self::InternalLoader;
+    unsafe fn get_extended_loader(&self) -> Self::ExtendedLoader;
 }
 
 /// A library loader.
@@ -187,37 +190,43 @@ where
 
 impl<'a, T, O> LibraryLoader<T, O>
 where
-    T: LibraryLoaderAPI<'a>,
+    T: LibraryLoaderABICompat,
     O: AccessIdentifier,
 {
-    /// Fetches a pointer that can be used with the interface.
+    /// Fetches a fat pointer that can be used with the interface.
     #[inline]
-    pub fn to_interface(&self) -> NonNullConst<LibraryLoaderInterface> {
-        self._loader.to_interface()
+    pub fn to_raw(&self) -> LibraryLoaderInterface {
+        self._loader.to_raw()
     }
 
-    /// Construct a new instance from a pointer.
+    /// Construct a new instance from a fat pointer.
     ///
     /// # Safety
     ///
     /// This function should not be used directly.
     #[inline]
-    pub unsafe fn from_interface(handler: NonNullConst<LibraryLoaderInterface>) -> Self {
+    pub unsafe fn from_raw(handler: LibraryLoaderInterface) -> Self {
         Self {
-            _loader: T::from_interface(handler),
+            _loader: T::from_raw(handler),
             _ownership: PhantomData,
         }
     }
+}
 
+impl<'a, T, O> LibraryLoader<T, O>
+where
+    T: LibraryLoaderAPI<'a>,
+    O: AccessIdentifier,
+{
     /// Construct a new instance from a void pointer.
     ///
     /// # Safety
     ///
     /// This function should not be used directly.
     #[inline]
-    pub unsafe fn from_void_ptr(handler: NonNullConst<c_void>) -> Self {
+    pub unsafe fn from_fat_ptr(ptr: FatPtr<LibraryLoaderFFI, c_void>) -> Self {
         Self {
-            _loader: T::from_void_ptr(handler),
+            _loader: T::from_fat_ptr(ptr),
             _ownership: PhantomData,
         }
     }
@@ -344,11 +353,11 @@ where
         self._loader.get_function_symbol(internal, symbol, caster)
     }
 
-    /// Fetches a pointer to the internal interface.
+    /// Fetches the extended loader.
     ///
     /// # Return
     ///
-    /// Pointer to the interface.
+    /// Extended_loader
     ///
     /// # Safety
     ///
@@ -356,9 +365,9 @@ where
     /// Direct usage of a [LibraryLoader] may break some invariants
     /// of the library api, if not handled with care.
     #[inline]
-    pub unsafe fn get_internal_interface(&self) -> LibraryLoader<T::InternalLoader, O> {
+    pub unsafe fn get_extended_loader(&self) -> LibraryLoader<T::ExtendedLoader, O> {
         LibraryLoader {
-            _loader: self._loader.get_internal_interface(),
+            _loader: self._loader.get_extended_loader(),
             _ownership: PhantomData,
         }
     }
@@ -367,7 +376,7 @@ where
 /// Invalid type erased library loader.
 #[derive(Debug, Copy, Clone, Hash)]
 pub struct InvalidLoader {
-    _interface: NonNullConst<c_void>,
+    _ptr: FatPtr<LibraryLoaderFFI, c_void>,
 }
 
 unsafe impl Send for InvalidLoader {}
@@ -376,33 +385,37 @@ unsafe impl Sync for InvalidLoader {}
 impl InvalidLoader {
     /// Constructs a new instance.
     #[inline]
-    pub fn new(interface: NonNullConst<c_void>) -> Self {
-        Self {
-            _interface: interface,
-        }
+    pub fn new(ptr: FatPtr<LibraryLoaderFFI, c_void>) -> Self {
+        Self { _ptr: ptr }
     }
 }
 
 impl Deref for InvalidLoader {
-    type Target = NonNullConst<c_void>;
+    type Target = FatPtr<LibraryLoaderFFI, c_void>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        &self._interface
+        &self._ptr
     }
 }
 
 impl DerefMut for InvalidLoader {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self._interface
+        &mut self._ptr
+    }
+}
+
+impl From<FatPtr<LibraryLoaderFFI, c_void>> for InvalidLoader {
+    fn from(val: FatPtr<LibraryLoaderFFI, c_void>) -> Self {
+        Self::new(val)
     }
 }
 
 /// Type erased library loader.
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct UnknownLoader<'loader> {
-    _interface: NonNullConst<LibraryLoaderInterface>,
+    _interface: LibraryLoaderInterface,
     _phantom: PhantomData<&'loader ()>,
 }
 
@@ -410,7 +423,7 @@ unsafe impl Send for UnknownLoader<'_> {}
 unsafe impl Sync for UnknownLoader<'_> {}
 
 impl Deref for UnknownLoader<'_> {
-    type Target = NonNullConst<LibraryLoaderInterface>;
+    type Target = LibraryLoaderInterface;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -425,27 +438,37 @@ impl DerefMut for UnknownLoader<'_> {
     }
 }
 
-impl LibraryLoaderABICompat for UnknownLoader<'_> {}
+impl From<FatPtr<LibraryLoaderFFI, c_void>> for UnknownLoader<'_> {
+    fn from(val: FatPtr<LibraryLoaderFFI, c_void>) -> Self {
+        unsafe { Self::from_fat_ptr(val) }
+    }
+}
 
-impl<'a> LibraryLoaderAPI<'a> for UnknownLoader<'a> {
-    type InternalLoader = InvalidLoader;
-
+impl LibraryLoaderABICompat for UnknownLoader<'_> {
     #[inline]
-    fn to_interface(&self) -> NonNullConst<LibraryLoaderInterface> {
+    fn to_raw(&self) -> LibraryLoaderInterface {
         self._interface
     }
 
     #[inline]
-    unsafe fn from_interface(interface: NonNullConst<LibraryLoaderInterface>) -> Self {
+    unsafe fn from_raw(interface: LibraryLoaderInterface) -> Self {
         Self {
             _interface: interface,
             _phantom: PhantomData,
         }
     }
+}
+
+impl<'a> LibraryLoaderAPI<'a> for UnknownLoader<'a> {
+    type ExtendedLoader = InvalidLoader;
 
     #[inline]
-    unsafe fn from_void_ptr(interface: NonNullConst<c_void>) -> Self {
-        Self::from_interface(interface.cast())
+    unsafe fn from_fat_ptr(ptr: FatPtr<LibraryLoaderFFI, c_void>) -> Self {
+        // Assumes that the vtable has the type `LibraryLoaderInterfaceVTable`.
+        Self::from_raw(LibraryLoaderInterface {
+            loader: ptr.data,
+            vtable: ptr.vtable.cast(),
+        })
     }
 
     #[inline]
@@ -455,9 +478,7 @@ impl<'a> LibraryLoaderAPI<'a> for UnknownLoader<'a> {
     ) -> Result<InternalLibrary<Owned>, Error<Owned>> {
         let path_buff = path.as_ref().to_os_path_buff_null();
         self._interface
-            .into_mut()
-            .as_mut()
-            .load(NonNullConst::from(path_buff.as_slice()))
+            .load(OSPathString::from(path_buff.as_slice()))
             .into_rust()
             .map_or_else(|e| Err(Error::from(e)), |v| Ok(InternalLibrary::new(v)))
     }
@@ -465,8 +486,6 @@ impl<'a> LibraryLoaderAPI<'a> for UnknownLoader<'a> {
     #[inline]
     unsafe fn unload(&mut self, internal: InternalLibrary<Owned>) -> Result<(), Error<Owned>> {
         self._interface
-            .into_mut()
-            .as_mut()
             .unload(internal.as_handle())
             .into_rust()
             .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
@@ -483,7 +502,6 @@ impl<'a> LibraryLoaderAPI<'a> for UnknownLoader<'a> {
         O: ImmutableAccessIdentifier,
     {
         self._interface
-            .as_ref()
             .get_data_symbol(
                 internal.borrow().as_handle(),
                 NonNullConst::from(symbol.as_ref().to_bytes_with_nul()),
@@ -506,7 +524,6 @@ impl<'a> LibraryLoaderAPI<'a> for UnknownLoader<'a> {
         O: ImmutableAccessIdentifier,
     {
         self._interface
-            .as_ref()
             .get_function_symbol(
                 internal.borrow().as_handle(),
                 NonNullConst::from(symbol.as_ref().to_bytes_with_nul()),
@@ -519,8 +536,11 @@ impl<'a> LibraryLoaderAPI<'a> for UnknownLoader<'a> {
     }
 
     #[inline]
-    unsafe fn get_internal_interface(&self) -> Self::InternalLoader {
-        Self::InternalLoader::new(self._interface.as_ref().get_internal_interface())
+    unsafe fn get_extended_loader(&self) -> Self::ExtendedLoader {
+        Self::ExtendedLoader::from(FatPtr::from_raw(
+            self._interface.loader,
+            self._interface.get_extended_vtable(),
+        ))
     }
 }
 
@@ -531,7 +551,7 @@ pub struct NativeLoader<'loader> {
 }
 
 impl Deref for NativeLoader<'_> {
-    type Target = NonNullConst<LibraryLoaderInterface>;
+    type Target = LibraryLoaderInterface;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -546,26 +566,34 @@ impl DerefMut for NativeLoader<'_> {
     }
 }
 
-impl LibraryLoaderABICompat for NativeLoader<'_> {}
+impl From<FatPtr<LibraryLoaderFFI, c_void>> for NativeLoader<'_> {
+    fn from(val: FatPtr<LibraryLoaderFFI, c_void>) -> Self {
+        unsafe { Self::from_fat_ptr(val) }
+    }
+}
 
-impl<'a> LibraryLoaderAPI<'a> for NativeLoader<'a> {
-    type InternalLoader = NativeLoaderInternal<'a>;
-
+impl LibraryLoaderABICompat for NativeLoader<'_> {
     #[inline]
-    fn to_interface(&self) -> NonNullConst<LibraryLoaderInterface> {
-        self._interface.to_interface()
+    fn to_raw(&self) -> LibraryLoaderInterface {
+        self._interface.to_raw()
     }
 
     #[inline]
-    unsafe fn from_interface(interface: NonNullConst<LibraryLoaderInterface>) -> Self {
+    unsafe fn from_raw(interface: LibraryLoaderInterface) -> Self {
         Self {
-            _interface: UnknownLoader::from_interface(interface),
+            _interface: UnknownLoader::from_raw(interface),
         }
     }
+}
+
+impl<'a> LibraryLoaderAPI<'a> for NativeLoader<'a> {
+    type ExtendedLoader = NativeLoaderInternal<'a>;
 
     #[inline]
-    unsafe fn from_void_ptr(interface: NonNullConst<c_void>) -> Self {
-        Self::from_interface(interface.cast())
+    unsafe fn from_fat_ptr(ptr: FatPtr<LibraryLoaderFFI, c_void>) -> Self {
+        Self {
+            _interface: UnknownLoader::from_fat_ptr(ptr),
+        }
     }
 
     #[inline]
@@ -609,15 +637,15 @@ impl<'a> LibraryLoaderAPI<'a> for NativeLoader<'a> {
     }
 
     #[inline]
-    unsafe fn get_internal_interface(&self) -> Self::InternalLoader {
-        Self::InternalLoader::from_void_ptr(*self._interface.get_internal_interface())
+    unsafe fn get_extended_loader(&self) -> Self::ExtendedLoader {
+        Self::ExtendedLoader::from_fat_ptr(self._interface.get_extended_loader()._ptr)
     }
 }
 
 /// Native library loader internal interface.
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct NativeLoaderInternal<'loader> {
-    _interface: NonNullConst<NativeLibraryLoaderInterface>,
+    _interface: NativeLibraryLoaderInterface,
     _phantom: PhantomData<&'loader ()>,
 }
 
@@ -625,7 +653,7 @@ unsafe impl Send for NativeLoaderInternal<'_> {}
 unsafe impl Sync for NativeLoaderInternal<'_> {}
 
 impl Deref for NativeLoaderInternal<'_> {
-    type Target = NonNullConst<NativeLibraryLoaderInterface>;
+    type Target = NativeLibraryLoaderInterface;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -640,23 +668,22 @@ impl DerefMut for NativeLoaderInternal<'_> {
     }
 }
 
+impl From<FatPtr<LibraryLoaderFFI, c_void>> for NativeLoaderInternal<'_> {
+    fn from(val: FatPtr<LibraryLoaderFFI, c_void>) -> Self {
+        unsafe { Self::from_fat_ptr(val) }
+    }
+}
+
 impl<'a> LibraryLoaderAPI<'a> for NativeLoaderInternal<'a> {
-    type InternalLoader = Self;
+    type ExtendedLoader = Self;
 
     #[inline]
-    fn to_interface(&self) -> NonNullConst<LibraryLoaderInterface> {
-        unsafe { self._interface.as_ref().loader }
-    }
-
-    #[inline]
-    unsafe fn from_interface(interface: NonNullConst<LibraryLoaderInterface>) -> Self {
-        NativeLoader::from_interface(interface).get_internal_interface()
-    }
-
-    #[inline]
-    unsafe fn from_void_ptr(interface: NonNullConst<c_void>) -> Self {
+    unsafe fn from_fat_ptr(ptr: FatPtr<LibraryLoaderFFI, c_void>) -> Self {
         Self {
-            _interface: interface.cast(),
+            _interface: NativeLibraryLoaderInterface {
+                loader: ptr.data,
+                vtable: ptr.vtable.cast(),
+            },
             _phantom: PhantomData,
         }
     }
@@ -666,12 +693,20 @@ impl<'a> LibraryLoaderAPI<'a> for NativeLoaderInternal<'a> {
         &mut self,
         path: impl AsRef<Path>,
     ) -> Result<InternalLibrary<Owned>, Error<Owned>> {
-        NativeLoader::from_interface(self.to_interface()).load(path)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .load(path)
     }
 
     #[inline]
     unsafe fn unload(&mut self, internal: InternalLibrary<Owned>) -> Result<(), Error<Owned>> {
-        NativeLoader::from_interface(self.to_interface()).unload(internal)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .unload(internal)
     }
 
     #[inline]
@@ -684,7 +719,11 @@ impl<'a> LibraryLoaderAPI<'a> for NativeLoaderInternal<'a> {
     where
         O: ImmutableAccessIdentifier,
     {
-        NativeLoader::from_interface(self.to_interface()).get_data_symbol(internal, symbol, caster)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .get_data_symbol(internal, symbol, caster)
     }
 
     #[inline]
@@ -697,12 +736,15 @@ impl<'a> LibraryLoaderAPI<'a> for NativeLoaderInternal<'a> {
     where
         O: ImmutableAccessIdentifier,
     {
-        NativeLoader::from_interface(self.to_interface())
-            .get_function_symbol(internal, symbol, caster)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .get_function_symbol(internal, symbol, caster)
     }
 
     #[inline]
-    unsafe fn get_internal_interface(&self) -> Self::InternalLoader {
+    unsafe fn get_extended_loader(&self) -> Self::ExtendedLoader {
         *self
     }
 }
@@ -737,9 +779,7 @@ impl NativeLoaderInternal<'_> {
 
         let path_buff = path.as_ref().to_os_path_buff_null();
         self._interface
-            .into_mut()
-            .as_mut()
-            .load_ext(NonNullConst::from(path_buff.as_slice()), flags)
+            .load_ext(OSPathString::from(path_buff.as_slice()), flags)
             .into_rust()
             .map_or_else(|e| Err(Error::from(e)), |v| Ok(InternalLibrary::new(v)))
     }
@@ -774,9 +814,7 @@ impl NativeLoaderInternal<'_> {
 
         let path_buff = path.as_ref().to_os_path_buff_null();
         self._interface
-            .into_mut()
-            .as_mut()
-            .load_ext(NonNullConst::from(path_buff.as_slice()), h_file, flags)
+            .load_ext(OSPathString::from(path_buff.as_slice()), h_file, flags)
             .into_rust()
             .map_or_else(|e| Err(Error::from(e)), |v| Ok(InternalLibrary::new(v)))
     }
@@ -810,7 +848,6 @@ impl NativeLoaderInternal<'_> {
         use crate::ffi::library::library_loader::NativeLibraryLoaderBindingWindows;
 
         self._interface
-            .as_ref()
             .get_native_handle(internal.borrow().as_handle())
             .into_rust()
             .map_err(Error::from)

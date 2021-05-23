@@ -58,7 +58,7 @@ pub fn register_loader<'loader, L, LT, T>(
     lib_type: impl AsRef<str>,
 ) -> Result<Loader<'static, Owned>, Error<Owned>>
 where
-    T: LibraryLoaderAPI<'static>,
+    T: LibraryLoaderAPI<'static> + LibraryLoaderABICompat,
     LibraryLoader<T, Owned>: From<&'loader LT>,
 {
     LibraryAPI::register_loader(get_mut_interface(), loader, lib_type)
@@ -92,14 +92,14 @@ pub fn unregister_loader<L>(
 /// Interface on success, error otherwise.
 #[inline]
 pub fn get_loader_interface<'loader, L, O, T>(
-    _token: &mut LockToken<L>,
+    _token: &LockToken<L>,
     loader: &Loader<'loader, O>,
 ) -> Result<LibraryLoader<T, O>, Error<Owned>>
 where
     O: ImmutableAccessIdentifier,
     T: LibraryLoaderAPI<'loader> + LibraryLoaderABICompat,
 {
-    LibraryAPI::get_loader_interface(get_mut_interface(), loader)
+    LibraryAPI::get_loader_interface(get_interface(), loader)
 }
 
 /// Fetches the loader handle associated with the library type.

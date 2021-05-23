@@ -1,3 +1,4 @@
+use crate::collections::NonNullConst;
 use crate::library::api as lib_api;
 use crate::library::api::LibraryBinding;
 use crate::module::api as mod_api;
@@ -23,9 +24,8 @@ pub type CBaseFn = fn() -> ();
 /// `emf-core-base` interface.
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
-pub struct CBaseInterface {
+pub struct CBaseInterfaceVTable {
     pub version: Version,
-    pub base_module: Option<NonNull<CBase>>,
 
     pub sys_shutdown_fn: sys_api::ShutdownFn,
     pub sys_panic_fn: sys_api::PanicFn,
@@ -108,6 +108,14 @@ pub struct CBaseInterface {
     pub module_get_interface_fn: mod_api::GetInterfaceFn,
 }
 
+/// `emf-core-base` interface.
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+pub struct CBaseInterface {
+    pub base_module: Option<NonNull<CBase>>,
+    pub vtable: NonNullConst<CBaseInterfaceVTable>,
+}
+
 unsafe impl Send for CBaseInterface {}
 unsafe impl Sync for CBaseInterface {}
 
@@ -129,7 +137,7 @@ pub trait CBaseBinding: SysBinding + VersionBinding + LibraryBinding + ModuleBin
 impl CBaseBinding for CBaseInterface {
     #[inline]
     fn interface_version(&self) -> Version {
-        self.version
+        unsafe { self.vtable.as_ref().version }
     }
 
     #[inline]
@@ -139,11 +147,11 @@ impl CBaseBinding for CBaseInterface {
 
     #[inline]
     fn fetch_has_function_fn(&self) -> sys_api::HasFunctionFn {
-        self.sys_has_function_fn
+        unsafe { self.vtable.as_ref().sys_has_function_fn }
     }
 
     #[inline]
     fn fetch_get_function_fn(&self) -> sys_api::GetFunctionFn {
-        self.sys_get_function_fn
+        unsafe { self.vtable.as_ref().sys_get_function_fn }
     }
 }

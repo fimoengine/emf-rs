@@ -1,9 +1,10 @@
 //! API of a module loader.
+use crate::fat_ptr::FatPtr;
 use crate::ffi::collections::NonNullConst;
-use crate::ffi::library::OSPathChar;
+use crate::ffi::library::{OSPathChar, OSPathString};
 use crate::ffi::module::module_loader::{
-    ModuleLoaderBinding, ModuleLoaderInterface, NativeModuleLoaderBinding,
-    NativeModuleLoaderInterface,
+    ModuleLoader as ModuleLoaderFFI, ModuleLoaderBinding, ModuleLoaderInterface,
+    NativeModuleLoaderBinding, NativeModuleLoaderInterface,
 };
 use crate::module::native_module::{NativeModule, NativeModuleInstance};
 use crate::module::{Interface, InterfaceDescriptor, InternalModule, ModuleInfo, ModuleStatus};
@@ -19,29 +20,29 @@ use std::path::Path;
 
 /// Trait for identifying module loaders whose data layout is
 /// compatible with the canonical module loader.
-pub trait ModuleLoaderABICompat {}
+pub trait ModuleLoaderABICompat {
+    /// Fetches a fat pointer that can be used with the interface.
+    fn to_raw(&self) -> ModuleLoaderInterface;
+
+    /// Construct a new instance from a fat pointer.
+    ///
+    /// # Safety
+    ///
+    /// This function should not be used directly.
+    unsafe fn from_raw(handler: ModuleLoaderInterface) -> Self;
+}
 
 /// The API of a module loader.
 pub trait ModuleLoaderAPI<'a> {
-    /// Type of the internal loader.
-    type InternalLoader;
+    /// Type of the extended loader.
+    type ExtendedLoader: From<FatPtr<ModuleLoaderFFI, c_void>>;
 
-    /// Fetches a pointer that can be used with the interface.
-    fn to_interface(&self) -> NonNullConst<ModuleLoaderInterface>;
-
-    /// Construct a new instance from a pointer.
+    /// Construct a new instance from an untyped fat pointer.
     ///
     /// # Safety
     ///
     /// This function should not be used directly.
-    unsafe fn from_interface(handler: NonNullConst<ModuleLoaderInterface>) -> Self;
-
-    /// Construct a new instance from a void pointer.
-    ///
-    /// # Safety
-    ///
-    /// This function should not be used directly.
-    unsafe fn from_void_ptr(handler: NonNullConst<c_void>) -> Self;
+    unsafe fn from_fat_ptr(ptr: FatPtr<ModuleLoaderFFI, c_void>) -> Self;
 
     /// Adds a new module.
     ///
@@ -318,18 +319,18 @@ pub trait ModuleLoaderAPI<'a> {
     where
         O: ImmutableAccessIdentifier;
 
-    /// Fetches a pointer to the internal loader interface.
+    /// Fetches the extended loader.
     ///
     /// # Return
     ///
-    /// Pointer to the loader interface.
+    /// Extended loader.
     ///
     /// # Safety
     ///
     /// The function crosses the ffi boundary.
     /// Direct usage of a [ModuleLoaderAPI] may break some invariants
     /// of the module api, if not handled with care.
-    unsafe fn get_internal_interface(&self) -> Self::InternalLoader;
+    unsafe fn get_extended_loader(&self) -> Self::ExtendedLoader;
 }
 
 /// A module loader.
@@ -363,37 +364,43 @@ where
 
 impl<'a, T, O> ModuleLoader<T, O>
 where
-    T: ModuleLoaderAPI<'a>,
+    T: ModuleLoaderABICompat,
     O: AccessIdentifier,
 {
-    /// Fetches a pointer that can be used with the interface.
+    /// Fetches a fat pointer that can be used with the interface.
     #[inline]
-    pub fn to_interface(&self) -> NonNullConst<ModuleLoaderInterface> {
-        self._loader.to_interface()
+    pub fn to_raw(&self) -> ModuleLoaderInterface {
+        self._loader.to_raw()
     }
 
-    /// Construct a new instance from a pointer.
+    /// Construct a new instance from a fat pointer.
     ///
     /// # Safety
     ///
     /// This function should not be used directly.
     #[inline]
-    pub unsafe fn from_interface(loader: NonNullConst<ModuleLoaderInterface>) -> Self {
+    pub unsafe fn from_raw(loader: ModuleLoaderInterface) -> Self {
         Self {
-            _loader: T::from_interface(loader),
+            _loader: T::from_raw(loader),
             _ownership: PhantomData,
         }
     }
+}
 
-    /// Construct a new instance from a void pointer.
+impl<'a, T, O> ModuleLoader<T, O>
+where
+    T: ModuleLoaderAPI<'a>,
+    O: AccessIdentifier,
+{
+    /// Construct a new instance from an untyped fat pointer.
     ///
     /// # Safety
     ///
     /// This function should not be used directly.
     #[inline]
-    pub unsafe fn from_void_ptr(handler: NonNullConst<c_void>) -> Self {
+    pub unsafe fn from_void_ptr(ptr: FatPtr<ModuleLoaderFFI, c_void>) -> Self {
         Self {
-            _loader: T::from_void_ptr(handler),
+            _loader: T::from_fat_ptr(ptr),
             _ownership: PhantomData,
         }
     }
@@ -744,11 +751,11 @@ where
         self._loader.get_exportable_interfaces(module)
     }
 
-    /// Fetches a pointer to the internal loader interface.
+    /// Fetches the extended loader.
     ///
     /// # Return
     ///
-    /// Pointer to the loader interface.
+    /// Extended loader.
     ///
     /// # Safety
     ///
@@ -756,9 +763,9 @@ where
     /// Direct usage of a [ModuleLoader] may break some invariants
     /// of the module api, if not handled with care.
     #[inline]
-    pub unsafe fn get_internal_interface(&self) -> ModuleLoader<T::InternalLoader, O> {
+    pub unsafe fn get_extended_loader(&self) -> ModuleLoader<T::ExtendedLoader, O> {
         ModuleLoader {
-            _loader: self._loader.get_internal_interface(),
+            _loader: self._loader.get_extended_loader(),
             _ownership: PhantomData,
         }
     }
@@ -767,7 +774,7 @@ where
 /// Invalid type erased module loader.
 #[derive(Debug, Copy, Clone, Hash)]
 pub struct InvalidLoader {
-    _interface: NonNullConst<c_void>,
+    _ptr: FatPtr<ModuleLoaderFFI, c_void>,
 }
 
 unsafe impl Send for InvalidLoader {}
@@ -776,33 +783,35 @@ unsafe impl Sync for InvalidLoader {}
 impl InvalidLoader {
     /// Constructs a new instance.
     #[inline]
-    pub fn new(interface: NonNullConst<c_void>) -> Self {
-        Self {
-            _interface: interface,
-        }
+    pub fn new(ptr: FatPtr<ModuleLoaderFFI, c_void>) -> Self {
+        Self { _ptr: ptr }
     }
 }
 
 impl Deref for InvalidLoader {
-    type Target = NonNullConst<c_void>;
+    type Target = FatPtr<ModuleLoaderFFI, c_void>;
 
-    #[inline]
     fn deref(&self) -> &Self::Target {
-        &self._interface
+        &self._ptr
     }
 }
 
 impl DerefMut for InvalidLoader {
-    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self._interface
+        &mut self._ptr
+    }
+}
+
+impl From<FatPtr<ModuleLoaderFFI, c_void>> for InvalidLoader {
+    fn from(val: FatPtr<ModuleLoaderFFI, c_void>) -> Self {
+        Self::new(val)
     }
 }
 
 /// Type erased module loader.
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct UnknownLoader<'loader> {
-    _interface: NonNullConst<ModuleLoaderInterface>,
+    _interface: ModuleLoaderInterface,
     _phantom: PhantomData<&'loader ()>,
 }
 
@@ -810,7 +819,7 @@ unsafe impl Send for UnknownLoader<'_> {}
 unsafe impl Sync for UnknownLoader<'_> {}
 
 impl Deref for UnknownLoader<'_> {
-    type Target = NonNullConst<ModuleLoaderInterface>;
+    type Target = ModuleLoaderInterface;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -825,28 +834,37 @@ impl DerefMut for UnknownLoader<'_> {
     }
 }
 
-impl ModuleLoaderABICompat for UnknownLoader<'_> {}
+impl From<FatPtr<ModuleLoaderFFI, c_void>> for UnknownLoader<'_> {
+    fn from(val: FatPtr<ModuleLoaderFFI, c_void>) -> Self {
+        unsafe { Self::from_fat_ptr(val) }
+    }
+}
 
-impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
-    type InternalLoader = InvalidLoader;
-
+impl ModuleLoaderABICompat for UnknownLoader<'_> {
     #[inline]
-    fn to_interface(&self) -> NonNullConst<ModuleLoaderInterface> {
+    fn to_raw(&self) -> ModuleLoaderInterface {
         self._interface
     }
 
     #[inline]
-    unsafe fn from_interface(interface: NonNullConst<ModuleLoaderInterface>) -> Self {
+    unsafe fn from_raw(interface: ModuleLoaderInterface) -> Self {
         Self {
             _interface: interface,
             _phantom: PhantomData,
         }
     }
+}
+
+impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
+    type ExtendedLoader = InvalidLoader;
 
     #[inline]
-    unsafe fn from_void_ptr(interface: NonNullConst<c_void>) -> Self {
-        // Safety: Assumes that the pointer is of the type `*const ModuleLoaderInterface`.
-        Self::from_interface(interface.cast())
+    unsafe fn from_fat_ptr(ptr: FatPtr<ModuleLoaderFFI, c_void>) -> Self {
+        // Assumes that the vtable pointer is of the type `*const ModuleLoaderInterfaceVTable`.
+        Self::from_raw(ModuleLoaderInterface {
+            loader: ptr.data,
+            vtable: ptr.vtable.cast(),
+        })
     }
 
     #[inline]
@@ -856,9 +874,7 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
     ) -> Result<InternalModule<Owned>, Error<Owned>> {
         let path_buff = path.as_ref().to_os_path_buff_null();
         self._interface
-            .into_mut()
-            .as_mut()
-            .add_module(NonNullConst::from(path_buff.as_slice()))
+            .add_module(OSPathString::from(path_buff.as_slice()))
             .into_rust()
             .map_or_else(|e| Err(Error::from(e)), |v| Ok(InternalModule::new(v)))
     }
@@ -866,8 +882,6 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
     #[inline]
     unsafe fn remove_module(&mut self, module: InternalModule<Owned>) -> Result<(), Error<Owned>> {
         self._interface
-            .into_mut()
-            .as_mut()
             .remove_module(module.as_handle())
             .into_rust()
             .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
@@ -879,8 +893,6 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
         O: MutableAccessIdentifier,
     {
         self._interface
-            .into_mut()
-            .as_mut()
             .load(module.as_handle())
             .into_rust()
             .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
@@ -892,8 +904,6 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
         O: MutableAccessIdentifier,
     {
         self._interface
-            .into_mut()
-            .as_mut()
             .unload(module.as_handle())
             .into_rust()
             .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
@@ -905,8 +915,6 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
         O: MutableAccessIdentifier,
     {
         self._interface
-            .into_mut()
-            .as_mut()
             .initialize(module.as_handle())
             .into_rust()
             .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
@@ -918,8 +926,6 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
         O: MutableAccessIdentifier,
     {
         self._interface
-            .into_mut()
-            .as_mut()
             .terminate(module.as_handle())
             .into_rust()
             .map_or_else(|e| Err(Error::from(e)), |_v| Ok(()))
@@ -934,7 +940,6 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
         O: ImmutableAccessIdentifier,
     {
         self._interface
-            .as_ref()
             .fetch_status(module.as_handle())
             .into_rust()
             .map_or_else(|e| Err(Error::from(e)), Ok)
@@ -951,7 +956,6 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
         O: ImmutableAccessIdentifier,
     {
         self._interface
-            .as_ref()
             .get_interface(module.as_handle(), NonNullConst::from(interface))
             .into_rust()
             .map_or_else(|e| Err(Error::from(e)), |v| Ok(Interface::new(caster(v))))
@@ -966,7 +970,6 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
         O: ImmutableAccessIdentifier,
     {
         self._interface
-            .as_ref()
             .get_module_info(module.as_handle())
             .into_rust()
             .map_or_else(|e| Err(Error::from(e)), |v| Ok(&*v.as_ptr()))
@@ -981,18 +984,13 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
         O: ImmutableAccessIdentifier,
     {
         self._interface
-            .as_ref()
             .get_module_path(module.as_handle())
             .into_rust()
             .map_or_else(
                 |e| Err(Error::from(e)),
                 |v| {
-                    let mut end = v.as_ptr();
-                    while *end != 0 {
-                        end = end.offset(1);
-                    }
-                    let length = 1 + end.offset_from(v.as_ptr()) as usize;
-                    Ok(std::slice::from_raw_parts(v.as_ptr(), length))
+                    let slice = v.as_ref();
+                    Ok(std::slice::from_raw_parts(slice.as_ptr(), slice.len()))
                 },
             )
     }
@@ -1006,14 +1004,13 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
         O: ImmutableAccessIdentifier,
     {
         self._interface
-            .as_ref()
             .get_load_dependencies(module.as_handle())
             .into_rust()
             .map_or_else(
                 |e| Err(Error::from(e)),
-                |v| match v.is_empty() {
-                    true => Ok(<&[_]>::default()),
-                    false => Ok(std::slice::from_raw_parts(v.as_ptr(), v.len())),
+                |v| {
+                    let slice = v.as_ref();
+                    Ok(std::slice::from_raw_parts(slice.as_ptr(), slice.len()))
                 },
             )
     }
@@ -1027,14 +1024,13 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
         O: ImmutableAccessIdentifier,
     {
         self._interface
-            .as_ref()
             .get_runtime_dependencies(module.as_handle())
             .into_rust()
             .map_or_else(
                 |e| Err(Error::from(e)),
-                |v| match v.is_empty() {
-                    true => Ok(<&[_]>::default()),
-                    false => Ok(std::slice::from_raw_parts(v.as_ptr(), v.len())),
+                |v| {
+                    let slice = v.as_ref();
+                    Ok(std::slice::from_raw_parts(slice.as_ptr(), slice.len()))
                 },
             )
     }
@@ -1048,21 +1044,23 @@ impl<'a> ModuleLoaderAPI<'a> for UnknownLoader<'a> {
         O: ImmutableAccessIdentifier,
     {
         self._interface
-            .as_ref()
             .get_exportable_interfaces(module.as_handle())
             .into_rust()
             .map_or_else(
                 |e| Err(Error::from(e)),
-                |v| match v.is_empty() {
-                    true => Ok(<&[_]>::default()),
-                    false => Ok(std::slice::from_raw_parts(v.as_ptr(), v.len())),
+                |v| {
+                    let slice = v.as_ref();
+                    Ok(std::slice::from_raw_parts(slice.as_ptr(), slice.len()))
                 },
             )
     }
 
     #[inline]
-    unsafe fn get_internal_interface(&self) -> Self::InternalLoader {
-        Self::InternalLoader::new(self._interface.as_ref().get_internal_interface())
+    unsafe fn get_extended_loader(&self) -> Self::ExtendedLoader {
+        Self::ExtendedLoader::from(FatPtr::from_raw(
+            self.loader,
+            self._interface.get_extended_vtable(),
+        ))
     }
 }
 
@@ -1073,7 +1071,7 @@ pub struct NativeLoader<'loader> {
 }
 
 impl Deref for NativeLoader<'_> {
-    type Target = NonNullConst<ModuleLoaderInterface>;
+    type Target = ModuleLoaderInterface;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -1088,26 +1086,34 @@ impl DerefMut for NativeLoader<'_> {
     }
 }
 
-impl ModuleLoaderABICompat for NativeLoader<'_> {}
+impl From<FatPtr<ModuleLoaderFFI, c_void>> for NativeLoader<'_> {
+    fn from(val: FatPtr<ModuleLoaderFFI, c_void>) -> Self {
+        unsafe { Self::from_fat_ptr(val) }
+    }
+}
 
-impl<'a> ModuleLoaderAPI<'a> for NativeLoader<'a> {
-    type InternalLoader = NativeLoaderInternal<'a>;
-
+impl ModuleLoaderABICompat for NativeLoader<'_> {
     #[inline]
-    fn to_interface(&self) -> NonNullConst<ModuleLoaderInterface> {
-        self._interface.to_interface()
+    fn to_raw(&self) -> ModuleLoaderInterface {
+        self._interface.to_raw()
     }
 
     #[inline]
-    unsafe fn from_interface(interface: NonNullConst<ModuleLoaderInterface>) -> Self {
+    unsafe fn from_raw(interface: ModuleLoaderInterface) -> Self {
         Self {
-            _interface: UnknownLoader::from_interface(interface),
+            _interface: UnknownLoader::from_raw(interface),
         }
     }
+}
+
+impl<'a> ModuleLoaderAPI<'a> for NativeLoader<'a> {
+    type ExtendedLoader = NativeLoaderInternal<'a>;
 
     #[inline]
-    unsafe fn from_void_ptr(interface: NonNullConst<c_void>) -> Self {
-        Self::from_interface(interface.cast())
+    unsafe fn from_fat_ptr(ptr: FatPtr<ModuleLoaderFFI, c_void>) -> Self {
+        Self {
+            _interface: UnknownLoader::from_fat_ptr(ptr),
+        }
     }
 
     #[inline]
@@ -1235,15 +1241,15 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoader<'a> {
     }
 
     #[inline]
-    unsafe fn get_internal_interface(&self) -> Self::InternalLoader {
-        Self::InternalLoader::from_void_ptr(*self._interface.get_internal_interface())
+    unsafe fn get_extended_loader(&self) -> Self::ExtendedLoader {
+        Self::ExtendedLoader::from(self._interface.get_extended_loader()._ptr)
     }
 }
 
 /// Native library loader internal interface.
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct NativeLoaderInternal<'loader> {
-    _interface: NonNullConst<NativeModuleLoaderInterface>,
+    _interface: NativeModuleLoaderInterface,
     _phantom: PhantomData<&'loader ()>,
 }
 
@@ -1251,7 +1257,7 @@ unsafe impl Send for NativeLoaderInternal<'_> {}
 unsafe impl Sync for NativeLoaderInternal<'_> {}
 
 impl Deref for NativeLoaderInternal<'_> {
-    type Target = NonNullConst<NativeModuleLoaderInterface>;
+    type Target = NativeModuleLoaderInterface;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -1266,24 +1272,23 @@ impl DerefMut for NativeLoaderInternal<'_> {
     }
 }
 
+impl From<FatPtr<ModuleLoaderFFI, c_void>> for NativeLoaderInternal<'_> {
+    fn from(val: FatPtr<ModuleLoaderFFI, c_void>) -> Self {
+        unsafe { Self::from_fat_ptr(val) }
+    }
+}
+
 impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
-    type InternalLoader = Self;
+    type ExtendedLoader = Self;
 
     #[inline]
-    fn to_interface(&self) -> NonNullConst<ModuleLoaderInterface> {
-        // Safety: The pointer is always valid.
-        unsafe { self._interface.as_ref().loader }
-    }
-
-    #[inline]
-    unsafe fn from_interface(interface: NonNullConst<ModuleLoaderInterface>) -> Self {
-        NativeLoader::from_interface(interface).get_internal_interface()
-    }
-
-    #[inline]
-    unsafe fn from_void_ptr(interface: NonNullConst<c_void>) -> Self {
+    unsafe fn from_fat_ptr(ptr: FatPtr<ModuleLoaderFFI, c_void>) -> Self {
+        // Assumes that the vtable has the type `*const NativeModuleLoaderVTable`.
         Self {
-            _interface: interface.cast(),
+            _interface: NativeModuleLoaderInterface {
+                loader: ptr.data,
+                vtable: ptr.vtable.cast(),
+            },
             _phantom: PhantomData,
         }
     }
@@ -1293,12 +1298,20 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
         &mut self,
         path: impl AsRef<Path>,
     ) -> Result<InternalModule<Owned>, Error<Owned>> {
-        NativeLoader::from_interface(self.to_interface()).add_module(path)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .add_module(path)
     }
 
     #[inline]
     unsafe fn remove_module(&mut self, module: InternalModule<Owned>) -> Result<(), Error<Owned>> {
-        NativeLoader::from_interface(self.to_interface()).remove_module(module)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .remove_module(module)
     }
 
     #[inline]
@@ -1306,7 +1319,11 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     where
         O: MutableAccessIdentifier,
     {
-        NativeLoader::from_interface(self.to_interface()).load(module)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .load(module)
     }
 
     #[inline]
@@ -1314,7 +1331,11 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     where
         O: MutableAccessIdentifier,
     {
-        NativeLoader::from_interface(self.to_interface()).unload(module)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .unload(module)
     }
 
     #[inline]
@@ -1322,7 +1343,11 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     where
         O: MutableAccessIdentifier,
     {
-        NativeLoader::from_interface(self.to_interface()).initialize(module)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .initialize(module)
     }
 
     #[inline]
@@ -1330,7 +1355,11 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     where
         O: MutableAccessIdentifier,
     {
-        NativeLoader::from_interface(self.to_interface()).terminate(module)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .terminate(module)
     }
 
     #[inline]
@@ -1341,7 +1370,11 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     where
         O: ImmutableAccessIdentifier,
     {
-        NativeLoader::from_interface(self.to_interface()).fetch_status(module)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .fetch_status(module)
     }
 
     #[inline]
@@ -1354,7 +1387,11 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     where
         O: ImmutableAccessIdentifier,
     {
-        NativeLoader::from_interface(self.to_interface()).get_interface(module, interface, caster)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .get_interface(module, interface, caster)
     }
 
     #[inline]
@@ -1365,7 +1402,11 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     where
         O: ImmutableAccessIdentifier,
     {
-        NativeLoader::from_interface(self.to_interface()).get_module_info(module)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .get_module_info(module)
     }
 
     #[inline]
@@ -1376,7 +1417,11 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     where
         O: ImmutableAccessIdentifier,
     {
-        NativeLoader::from_interface(self.to_interface()).get_module_path(module)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .get_module_path(module)
     }
 
     #[inline]
@@ -1387,7 +1432,11 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     where
         O: ImmutableAccessIdentifier,
     {
-        NativeLoader::from_interface(self.to_interface()).get_load_dependencies(module)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .get_load_dependencies(module)
     }
 
     #[inline]
@@ -1398,7 +1447,11 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     where
         O: ImmutableAccessIdentifier,
     {
-        NativeLoader::from_interface(self.to_interface()).get_runtime_dependencies(module)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .get_runtime_dependencies(module)
     }
 
     #[inline]
@@ -1409,11 +1462,15 @@ impl<'a> ModuleLoaderAPI<'a> for NativeLoaderInternal<'a> {
     where
         O: ImmutableAccessIdentifier,
     {
-        NativeLoader::from_interface(self.to_interface()).get_exportable_interfaces(module)
+        NativeLoader::from_fat_ptr(FatPtr::from_raw(
+            self.loader,
+            self.vtable.as_ref().loader_vtable.cast(),
+        ))
+        .get_exportable_interfaces(module)
     }
 
     #[inline]
-    unsafe fn get_internal_interface(&self) -> Self::InternalLoader {
+    unsafe fn get_extended_loader(&self) -> Self::ExtendedLoader {
         *self
     }
 }
@@ -1443,7 +1500,6 @@ impl<'a> NativeLoaderInternal<'a> {
         O: ImmutableAccessIdentifier,
     {
         self._interface
-            .as_ref()
             .get_native_module(module.as_handle())
             .into_rust()
             .map_or_else(
@@ -1476,7 +1532,6 @@ impl<'a> NativeLoaderInternal<'a> {
         O: ImmutableAccessIdentifier,
     {
         self._interface
-            .as_ref()
             .get_native_module_interface(module.as_handle())
             .into_rust()
             .map_or_else(|e| Err(Error::from(e)), |v| Ok(NativeModule::new(v)))

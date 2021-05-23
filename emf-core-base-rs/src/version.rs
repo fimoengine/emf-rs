@@ -5,7 +5,6 @@ use crate::ffi::collections::{ConstSpan, MutSpan, NonNullConst};
 use crate::ffi::version::api::VersionBinding;
 use crate::ffi::Bool;
 use std::cmp::Ordering;
-use std::ptr::NonNull;
 
 pub use crate::ffi::version::{ReleaseType, Version};
 use crate::ownership::Owned;
@@ -229,12 +228,9 @@ where
     #[inline]
     fn from_string(&self, buffer: impl AsRef<str>) -> Result<Version, Error<Owned>> {
         unsafe {
-            <T as VersionBinding>::from_string(
-                self,
-                NonNullConst::from(&ConstSpan::from(buffer.as_ref())),
-            )
-            .into_rust()
-            .map_err(From::from)
+            <T as VersionBinding>::from_string(self, ConstSpan::from(buffer.as_ref()))
+                .into_rust()
+                .map_err(From::from)
         }
     }
 
@@ -263,7 +259,7 @@ where
             <T as VersionBinding>::as_string_short(
                 self,
                 NonNullConst::from(version),
-                NonNull::from(&MutSpan::from(buffer.as_mut())),
+                MutSpan::from(buffer.as_mut()),
             )
             .into_rust()
             .map_err(From::from)
@@ -280,7 +276,7 @@ where
             <T as VersionBinding>::as_string_long(
                 self,
                 NonNullConst::from(version),
-                NonNull::from(&MutSpan::from(buffer.as_mut())),
+                MutSpan::from(buffer.as_mut()),
             )
             .into_rust()
             .map_err(From::from)
@@ -297,7 +293,7 @@ where
             <T as VersionBinding>::as_string_full(
                 self,
                 NonNullConst::from(version),
-                NonNull::from(&MutSpan::from(buffer.as_mut())),
+                MutSpan::from(buffer.as_mut()),
             )
             .into_rust()
             .map_err(From::from)
@@ -307,10 +303,8 @@ where
     #[inline]
     fn string_is_valid(&self, version_string: impl AsRef<str>) -> bool {
         unsafe {
-            <T as VersionBinding>::string_is_valid(
-                self,
-                NonNullConst::from(&ConstSpan::from(version_string.as_ref())),
-            ) == Bool::True
+            <T as VersionBinding>::string_is_valid(self, ConstSpan::from(version_string.as_ref()))
+                == Bool::True
         }
     }
 

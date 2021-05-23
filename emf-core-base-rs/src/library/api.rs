@@ -1,6 +1,7 @@
 use crate::ffi::collections::{MutSpan, NonNullConst};
 use crate::ffi::errors::SimpleError;
 use crate::ffi::library::api::LibraryBinding;
+use crate::ffi::library::OSPathString;
 use crate::ffi::{Bool, CBaseFn};
 use crate::library::library_loader::{LibraryLoader, LibraryLoaderABICompat, LibraryLoaderAPI};
 use crate::library::{
@@ -11,7 +12,6 @@ use crate::Error;
 use crate::ToOsPathBuff;
 use std::ffi::{c_void, CStr};
 use std::path::Path;
-use std::ptr::NonNull;
 
 /// Idiomatic library api.
 pub trait LibraryAPI<'interface> {
@@ -33,7 +33,7 @@ pub trait LibraryAPI<'interface> {
         lib_type: impl AsRef<str>,
     ) -> Result<Loader<'interface, Owned>, Error<Owned>>
     where
-        L: LibraryLoaderAPI<'static>,
+        L: LibraryLoaderAPI<'static> + LibraryLoaderABICompat,
         LibraryLoader<L, Owned>: From<&'loader LT>;
 
     /// Unregisters an existing loader.
@@ -57,7 +57,7 @@ pub trait LibraryAPI<'interface> {
     ///
     /// Interface on success, error otherwise.
     fn get_loader_interface<'loader, O, L>(
-        &mut self,
+        &self,
         loader: &Loader<'loader, O>,
     ) -> Result<LibraryLoader<L, O>, Error<Owned>>
     where
@@ -288,7 +288,7 @@ where
         lib_type: impl AsRef<str>,
     ) -> Result<Loader<'interface, Owned>, Error<Owned>>
     where
-        L: LibraryLoaderAPI<'static>,
+        L: LibraryLoaderAPI<'static> + LibraryLoaderABICompat,
         LibraryLoader<L, Owned>: From<&'loader LT>,
     {
         let lib_str = lib_type.as_ref();
@@ -303,7 +303,7 @@ where
 
         unsafe {
             self.register_loader(
-                LibraryLoader::<L, Owned>::from(loader).to_interface(),
+                LibraryLoader::<L, Owned>::from(loader).to_raw(),
                 NonNullConst::from(&lib_type),
             )
             .into_rust()
@@ -322,7 +322,7 @@ where
 
     #[inline]
     fn get_loader_interface<'loader, O, L>(
-        &mut self,
+        &self,
         loader: &Loader<'loader, O>,
     ) -> Result<LibraryLoader<L, O>, Error<Owned>>
     where
@@ -332,10 +332,7 @@ where
         unsafe {
             self.get_loader_interface(loader.as_handle())
                 .into_rust()
-                .map_or_else(
-                    |e| Err(Error::from(e)),
-                    |v| Ok(LibraryLoader::from_interface(v)),
-                )
+                .map_or_else(|e| Err(Error::from(e)), |v| Ok(LibraryLoader::from_raw(v)))
         }
     }
 
@@ -410,7 +407,7 @@ where
         mut buffer: impl AsMut<[LibraryType]>,
     ) -> Result<usize, Error<Owned>> {
         unsafe {
-            self.get_library_types(NonNull::from(&MutSpan::from(buffer.as_mut())))
+            self.get_library_types(MutSpan::from(buffer.as_mut()))
                 .into_rust()
                 .map_err(Error::from)
         }
@@ -479,7 +476,7 @@ where
     {
         let path_buff = path.as_ref().to_os_path_buff_null();
         unsafe {
-            self.load(loader.as_handle(), NonNullConst::from(path_buff.as_slice()))
+            self.load(loader.as_handle(), OSPathString::from(path_buff.as_slice()))
                 .into_rust()
                 .map_or_else(|e| Err(Error::from(e)), |v| Ok(Library::new(v)))
         }

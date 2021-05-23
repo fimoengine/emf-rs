@@ -116,11 +116,14 @@ where
     where
         U: SyncHandlerAPI<'interface>,
     {
-        unsafe { U::from_interface(<T as SysBinding>::get_sync_handler(self)) }
+        unsafe { U::from_raw(<T as SysBinding>::get_sync_handler(self)) }
     }
 
     #[inline]
     unsafe fn set_sync_handler(&mut self, handler: Option<&impl SyncHandlerAPI<'interface>>) {
-        <T as SysBinding>::set_sync_handler(self, handler.map(|handler| handler.to_interface()))
+        <T as SysBinding>::set_sync_handler(
+            self,
+            From::from(handler.map(|handler| handler.to_raw())),
+        )
     }
 }

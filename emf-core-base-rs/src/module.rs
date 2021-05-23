@@ -231,12 +231,19 @@ pub struct Interface<'a, T> {
 }
 
 impl<T> Interface<'_, T> {
+    /// Constructs a new instance.
     #[inline]
     fn new(interface: T) -> Self {
         Self {
             _interface: interface,
             _phantom: PhantomData,
         }
+    }
+
+    /// Consumes the `Interface`, turning it into the contained `T`.
+    #[inline]
+    pub fn into_inner(self) -> T {
+        self._interface
     }
 }
 
