@@ -3,7 +3,7 @@
 //! Any object that can be wrapped into a [LibraryLoaderInterface] can be used as a library loader.
 use crate::collections::{NonNullConst, Result};
 use crate::errors::Error;
-use crate::library::{InternalHandle, OSPathChar, Symbol};
+use crate::library::{InternalHandle, OSPathString, Symbol};
 use crate::{CBaseFn, TypeWrapper};
 use std::ffi::c_void;
 #[cfg(windows)]
@@ -19,7 +19,7 @@ pub struct LibraryLoader {
 pub type LoadFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         loader: Option<NonNull<LibraryLoader>>,
-        path: NonNullConst<OSPathChar>,
+        path: OSPathString,
     ) -> Result<InternalHandle, Error>,
 >;
 
@@ -46,20 +46,27 @@ pub type GetFnSymbolFn = TypeWrapper<
     ) -> Result<Symbol<CBaseFn>, Error>,
 >;
 
-pub type GetInternalInterfaceFn = TypeWrapper<
+pub type GetExtendedVTableFn = TypeWrapper<
     unsafe extern "C-unwind" fn(loader: Option<NonNull<LibraryLoader>>) -> NonNullConst<c_void>,
 >;
+
+/// VTable of a library loader.
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+pub struct LibraryLoaderVTable {
+    pub load_fn: LoadFn,
+    pub unload_fn: UnloadFn,
+    pub get_data_symbol_fn: GetDataSymbolFn,
+    pub get_function_symbol_fn: GetFnSymbolFn,
+    pub get_extended_vtable_fn: GetExtendedVTableFn,
+}
 
 /// Interface of a library loader.
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct LibraryLoaderInterface {
     pub loader: Option<NonNull<LibraryLoader>>,
-    pub load_fn: LoadFn,
-    pub unload_fn: UnloadFn,
-    pub get_data_symbol_fn: GetDataSymbolFn,
-    pub get_function_symbol_fn: GetFnSymbolFn,
-    pub get_internal_interface_fn: GetInternalInterfaceFn,
+    pub vtable: NonNullConst<LibraryLoaderVTable>,
 }
 
 unsafe impl Send for LibraryLoaderInterface {}
@@ -83,7 +90,7 @@ pub trait LibraryLoaderBinding {
     /// The function crosses the ffi boundary.
     /// Direct usage of a [LibraryLoaderBinding] may break some invariants
     /// of the library api, if not handled with care.
-    unsafe fn load(&mut self, path: NonNullConst<OSPathChar>) -> Result<InternalHandle, Error>;
+    unsafe fn load(&mut self, path: OSPathString) -> Result<InternalHandle, Error>;
 
     /// Unloads a library.
     ///
@@ -154,29 +161,29 @@ pub trait LibraryLoaderBinding {
         name: NonNullConst<u8>,
     ) -> Result<Symbol<CBaseFn>, Error>;
 
-    /// Fetches a pointer to the internal interface.
+    /// Fetches a pointer to the extended loader vtable.
     ///
     /// # Return
     ///
-    /// Pointer to the interface.
+    /// Pointer to the vtable.
     ///
     /// # Safety
     ///
     /// The function crosses the ffi boundary.
     /// Direct usage of a [LibraryLoaderBinding] may break some invariants
     /// of the library api, if not handled with care.
-    unsafe fn get_internal_interface(&self) -> NonNullConst<c_void>;
+    unsafe fn get_extended_vtable(&self) -> NonNullConst<c_void>;
 }
 
 impl LibraryLoaderBinding for LibraryLoaderInterface {
     #[inline]
-    unsafe fn load(&mut self, path: NonNullConst<OSPathChar>) -> Result<InternalHandle, Error> {
-        (self.load_fn)(self.loader, path)
+    unsafe fn load(&mut self, path: OSPathString) -> Result<InternalHandle, Error> {
+        (self.vtable.as_ref().load_fn)(self.loader, path)
     }
 
     #[inline]
     unsafe fn unload(&mut self, handle: InternalHandle) -> Result<i8, Error> {
-        (self.unload_fn)(self.loader, handle)
+        (self.vtable.as_ref().unload_fn)(self.loader, handle)
     }
 
     #[inline]
@@ -185,7 +192,7 @@ impl LibraryLoaderBinding for LibraryLoaderInterface {
         handle: InternalHandle,
         name: NonNullConst<u8>,
     ) -> Result<Symbol<NonNullConst<c_void>>, Error> {
-        (self.get_data_symbol_fn)(self.loader, handle, name)
+        (self.vtable.as_ref().get_data_symbol_fn)(self.loader, handle, name)
     }
 
     #[inline]
@@ -194,12 +201,12 @@ impl LibraryLoaderBinding for LibraryLoaderInterface {
         handle: InternalHandle,
         name: NonNullConst<u8>,
     ) -> Result<Symbol<CBaseFn>, Error> {
-        (self.get_function_symbol_fn)(self.loader, handle, name)
+        (self.vtable.as_ref().get_function_symbol_fn)(self.loader, handle, name)
     }
 
     #[inline]
-    unsafe fn get_internal_interface(&self) -> NonNullConst<c_void> {
-        (self.get_internal_interface_fn)(self.loader)
+    unsafe fn get_extended_vtable(&self) -> NonNullConst<c_void> {
+        (self.vtable.as_ref().get_extended_vtable_fn)(self.loader)
     }
 }
 
@@ -223,7 +230,7 @@ pub type NativeLibraryHandle = NativeLibraryHandleWindows;
 pub type LoadExtFnUnix = TypeWrapper<
     unsafe extern "C-unwind" fn(
         loader: Option<NonNull<LibraryLoader>>,
-        path: NonNullConst<OSPathChar>,
+        path: OSPathString,
         flags: i32,
     ) -> Result<InternalHandle, Error>,
 >;
@@ -232,7 +239,7 @@ pub type LoadExtFnUnix = TypeWrapper<
 pub type LoadExtFnWindows = TypeWrapper<
     unsafe extern "C-unwind" fn(
         loader: Option<NonNull<LibraryLoader>>,
-        path: NonNullConst<OSPathChar>,
+        path: OSPathString,
         h_file: Option<NonNull<HANDLE>>,
         flags: u32,
     ) -> Result<InternalHandle, Error>,
@@ -251,13 +258,21 @@ pub type LoadExtFn = LoadExtFnUnix;
 #[cfg(windows)]
 pub type LoadExtFn = LoadExtFnWindows;
 
+/// VTable of a native library loader.
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+pub struct NativeLibraryLoaderVTable {
+    pub loader_vtable: NonNullConst<LibraryLoaderVTable>,
+    pub load_ext_fn: LoadExtFn,
+    pub get_native_handle_fn: GetNativeHandleFn,
+}
+
 /// Interface of a native library loader.
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct NativeLibraryLoaderInterface {
-    pub loader: NonNullConst<LibraryLoaderInterface>,
-    pub load_ext_fn: LoadExtFn,
-    pub get_native_handle_fn: GetNativeHandleFn,
+    pub loader: Option<NonNull<LibraryLoader>>,
+    pub vtable: NonNullConst<NativeLibraryLoaderVTable>,
 }
 
 unsafe impl Send for NativeLibraryLoaderInterface {}
@@ -283,11 +298,7 @@ pub trait NativeLibraryLoaderBindingUnix: LibraryLoaderBinding {
     /// The function crosses the ffi boundary.
     /// Direct usage of a [LibraryLoaderBinding] may break some invariants
     /// of the library api, if not handled with care.
-    unsafe fn load_ext(
-        &mut self,
-        path: NonNullConst<OSPathChar>,
-        flags: i32,
-    ) -> Result<InternalHandle, Error>;
+    unsafe fn load_ext(&mut self, path: OSPathString, flags: i32) -> Result<InternalHandle, Error>;
 
     /// Returns the underlying handle of a library.
     ///
@@ -332,7 +343,7 @@ pub trait NativeLibraryLoaderBindingWindows: LibraryLoaderBinding {
     /// of the library api, if not handled with care.
     unsafe fn load_ext(
         &mut self,
-        path: NonNullConst<OSPathChar>,
+        path: OSPathString,
         h_file: Option<NonNull<HANDLE>>,
         flags: u32,
     ) -> Result<InternalHandle, Error>;
@@ -360,13 +371,13 @@ pub trait NativeLibraryLoaderBindingWindows: LibraryLoaderBinding {
 
 impl LibraryLoaderBinding for NativeLibraryLoaderInterface {
     #[inline]
-    unsafe fn load(&mut self, path: NonNullConst<OSPathChar>) -> Result<InternalHandle, Error> {
-        self.loader.into_mut().as_mut().load(path)
+    unsafe fn load(&mut self, path: OSPathString) -> Result<InternalHandle, Error> {
+        (self.vtable.as_ref().loader_vtable.as_ref().load_fn)(self.loader, path)
     }
 
     #[inline]
     unsafe fn unload(&mut self, handle: InternalHandle) -> Result<i8, Error> {
-        self.loader.into_mut().as_mut().unload(handle)
+        (self.vtable.as_ref().loader_vtable.as_ref().unload_fn)(self.loader, handle)
     }
 
     #[inline]
@@ -375,7 +386,12 @@ impl LibraryLoaderBinding for NativeLibraryLoaderInterface {
         handle: InternalHandle,
         name: NonNullConst<u8>,
     ) -> Result<Symbol<NonNullConst<c_void>>, Error> {
-        self.loader.as_ref().get_data_symbol(handle, name)
+        (self
+            .vtable
+            .as_ref()
+            .loader_vtable
+            .as_ref()
+            .get_data_symbol_fn)(self.loader, handle, name)
     }
 
     #[inline]
@@ -384,12 +400,22 @@ impl LibraryLoaderBinding for NativeLibraryLoaderInterface {
         handle: InternalHandle,
         name: NonNullConst<u8>,
     ) -> Result<Symbol<CBaseFn>, Error> {
-        self.loader.as_ref().get_function_symbol(handle, name)
+        (self
+            .vtable
+            .as_ref()
+            .loader_vtable
+            .as_ref()
+            .get_function_symbol_fn)(self.loader, handle, name)
     }
 
     #[inline]
-    unsafe fn get_internal_interface(&self) -> NonNullConst<c_void> {
-        self.loader.as_ref().get_internal_interface()
+    unsafe fn get_extended_vtable(&self) -> NonNullConst<c_void> {
+        (self
+            .vtable
+            .as_ref()
+            .loader_vtable
+            .as_ref()
+            .get_extended_vtable_fn)(self.loader)
     }
 }
 
@@ -397,12 +423,8 @@ impl LibraryLoaderBinding for NativeLibraryLoaderInterface {
 #[cfg(unix)]
 impl NativeLibraryLoaderBindingUnix for NativeLibraryLoaderInterface {
     #[inline]
-    unsafe fn load_ext(
-        &mut self,
-        path: NonNullConst<OSPathChar>,
-        flags: i32,
-    ) -> Result<InternalHandle, Error> {
-        (self.load_ext_fn)(self.loader.as_ref().loader, path, flags)
+    unsafe fn load_ext(&mut self, path: OSPathString, flags: i32) -> Result<InternalHandle, Error> {
+        (self.vtable.as_ref().load_ext_fn)(self.loader, path, flags)
     }
 
     #[inline]
@@ -410,7 +432,7 @@ impl NativeLibraryLoaderBindingUnix for NativeLibraryLoaderInterface {
         &self,
         handle: InternalHandle,
     ) -> Result<NativeLibraryHandle, Error> {
-        (self.get_native_handle_fn)(self.loader.as_ref().loader, handle)
+        (self.vtable.as_ref().get_native_handle_fn)(self.loader, handle)
     }
 }
 
@@ -420,11 +442,11 @@ impl NativeLibraryLoaderBindingWindows for NativeLibraryLoaderInterface {
     #[inline]
     unsafe fn load_ext(
         &mut self,
-        path: NonNullConst<OSPathChar>,
+        path: OSPathString,
         h_file: Option<NonNull<HANDLE>>,
         flags: u32,
     ) -> Result<InternalHandle, Error> {
-        (self.load_ext_fn)(self.loader.as_ref().loader, path, h_file, flags)
+        (self.vtable.as_ref().load_ext_fn)(self.loader, path, h_file, flags)
     }
 
     #[inline]
@@ -432,6 +454,6 @@ impl NativeLibraryLoaderBindingWindows for NativeLibraryLoaderInterface {
         &self,
         handle: InternalHandle,
     ) -> Result<NativeLibraryHandle, Error> {
-        (self.get_native_handle_fn)(self.loader.as_ref().loader, handle)
+        (self.vtable.as_ref().get_native_handle_fn)(self.loader, handle)
     }
 }

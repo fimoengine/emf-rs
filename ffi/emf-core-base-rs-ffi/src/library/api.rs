@@ -5,7 +5,7 @@ use crate::collections::{MutSpan, NonNullConst, Result};
 use crate::errors::Error;
 use crate::library::library_loader::LibraryLoaderInterface;
 use crate::library::{
-    InternalHandle, LibraryHandle, LibraryType, LoaderHandle, OSPathChar, Symbol,
+    InternalHandle, LibraryHandle, LibraryType, LoaderHandle, OSPathString, Symbol,
 };
 use crate::{Bool, CBase, CBaseFn, CBaseInterface, TypeWrapper};
 use std::ffi::c_void;
@@ -14,7 +14,7 @@ use std::ptr::NonNull;
 pub type RegisterLoaderFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
-        loader: NonNullConst<LibraryLoaderInterface>,
+        loader: LibraryLoaderInterface,
         lib_type: NonNullConst<LibraryType>,
     ) -> Result<LoaderHandle, Error>,
 >;
@@ -30,7 +30,7 @@ pub type GetLoaderInterfaceFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
         handle: LoaderHandle,
-    ) -> Result<NonNullConst<LibraryLoaderInterface>, Error>,
+    ) -> Result<LibraryLoaderInterface, Error>,
 >;
 
 pub type GetLoaderHandleFromTypeFn = TypeWrapper<
@@ -64,7 +64,7 @@ pub type TypeExistsFn = TypeWrapper<
 pub type GetLibraryTypesFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
-        buffer: NonNull<MutSpan<LibraryType>>,
+        buffer: MutSpan<LibraryType>,
     ) -> Result<usize, Error>,
 >;
 
@@ -98,7 +98,7 @@ pub type LoadFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
         loader: LoaderHandle,
-        path: NonNullConst<OSPathChar>,
+        path: OSPathString,
     ) -> Result<LibraryHandle, Error>,
 >;
 
@@ -144,7 +144,7 @@ pub trait LibraryBinding {
     /// The function is not thread-safe and crosses the ffi boundary.
     unsafe fn register_loader(
         &mut self,
-        loader: NonNullConst<LibraryLoaderInterface>,
+        loader: LibraryLoaderInterface,
         lib_type: NonNullConst<LibraryType>,
     ) -> Result<LoaderHandle, Error>;
 
@@ -177,9 +177,9 @@ pub trait LibraryBinding {
     ///
     /// The function is not thread-safe and crosses the ffi boundary.
     unsafe fn get_loader_interface(
-        &mut self,
+        &self,
         handle: LoaderHandle,
-    ) -> Result<NonNullConst<LibraryLoaderInterface>, Error>;
+    ) -> Result<LibraryLoaderInterface, Error>;
 
     /// Fetches the loader handle associated with the library type.
     ///
@@ -263,10 +263,7 @@ pub trait LibraryBinding {
     /// # Safety
     ///
     /// The function is not thread-safe and crosses the ffi boundary.
-    unsafe fn get_library_types(
-        &self,
-        buffer: NonNull<MutSpan<LibraryType>>,
-    ) -> Result<usize, Error>;
+    unsafe fn get_library_types(&self, buffer: MutSpan<LibraryType>) -> Result<usize, Error>;
 
     /// Creates a new unlinked library handle.
     ///
@@ -364,7 +361,7 @@ pub trait LibraryBinding {
     unsafe fn load(
         &mut self,
         loader: LoaderHandle,
-        path: NonNullConst<OSPathChar>,
+        path: OSPathString,
     ) -> Result<LibraryHandle, Error>;
 
     /// Unloads a library.
@@ -435,23 +432,23 @@ impl LibraryBinding for CBaseInterface {
     #[inline]
     unsafe fn register_loader(
         &mut self,
-        loader: NonNullConst<LibraryLoaderInterface>,
+        loader: LibraryLoaderInterface,
         lib_type: NonNullConst<LibraryType>,
     ) -> Result<LoaderHandle, Error> {
-        (self.library_register_loader_fn)(self.base_module, loader, lib_type)
+        (self.vtable.as_ref().library_register_loader_fn)(self.base_module, loader, lib_type)
     }
 
     #[inline]
     unsafe fn unregister_loader(&mut self, handle: LoaderHandle) -> Result<i8, Error> {
-        (self.library_unregister_loader_fn)(self.base_module, handle)
+        (self.vtable.as_ref().library_unregister_loader_fn)(self.base_module, handle)
     }
 
     #[inline]
     unsafe fn get_loader_interface(
-        &mut self,
+        &self,
         handle: LoaderHandle,
-    ) -> Result<NonNullConst<LibraryLoaderInterface>, Error> {
-        (self.library_get_loader_interface_fn)(self.base_module, handle)
+    ) -> Result<LibraryLoaderInterface, Error> {
+        (self.vtable.as_ref().library_get_loader_interface_fn)(self.base_module, handle)
     }
 
     #[inline]
@@ -459,7 +456,7 @@ impl LibraryBinding for CBaseInterface {
         &self,
         lib_type: NonNullConst<LibraryType>,
     ) -> Result<LoaderHandle, Error> {
-        (self.library_get_loader_handle_from_type_fn)(self.base_module, lib_type)
+        (self.vtable.as_ref().library_get_loader_handle_from_type_fn)(self.base_module, lib_type)
     }
 
     #[inline]
@@ -467,40 +464,40 @@ impl LibraryBinding for CBaseInterface {
         &self,
         handle: LibraryHandle,
     ) -> Result<LoaderHandle, Error> {
-        (self.library_get_loader_handle_from_library_fn)(self.base_module, handle)
+        (self
+            .vtable
+            .as_ref()
+            .library_get_loader_handle_from_library_fn)(self.base_module, handle)
     }
 
     #[inline]
     unsafe fn get_num_loaders(&self) -> usize {
-        (self.library_get_num_loaders_fn)(self.base_module)
+        (self.vtable.as_ref().library_get_num_loaders_fn)(self.base_module)
     }
 
     #[inline]
     unsafe fn library_exists(&self, handle: LibraryHandle) -> Bool {
-        (self.library_library_exists_fn)(self.base_module, handle)
+        (self.vtable.as_ref().library_library_exists_fn)(self.base_module, handle)
     }
 
     #[inline]
     unsafe fn type_exists(&self, lib_type: NonNullConst<LibraryType>) -> Bool {
-        (self.library_type_exists_fn)(self.base_module, lib_type)
+        (self.vtable.as_ref().library_type_exists_fn)(self.base_module, lib_type)
     }
 
     #[inline]
-    unsafe fn get_library_types(
-        &self,
-        buffer: NonNull<MutSpan<LibraryType>>,
-    ) -> Result<usize, Error> {
-        (self.library_get_library_types_fn)(self.base_module, buffer)
+    unsafe fn get_library_types(&self, buffer: MutSpan<LibraryType>) -> Result<usize, Error> {
+        (self.vtable.as_ref().library_get_library_types_fn)(self.base_module, buffer)
     }
 
     #[inline]
     unsafe fn create_library_handle(&mut self) -> LibraryHandle {
-        (self.library_create_library_handle_fn)(self.base_module)
+        (self.vtable.as_ref().library_create_library_handle_fn)(self.base_module)
     }
 
     #[inline]
     unsafe fn remove_library_handle(&mut self, handle: LibraryHandle) -> Result<i8, Error> {
-        (self.library_remove_library_handle_fn)(self.base_module, handle)
+        (self.vtable.as_ref().library_remove_library_handle_fn)(self.base_module, handle)
     }
 
     #[inline]
@@ -510,7 +507,7 @@ impl LibraryBinding for CBaseInterface {
         loader: LoaderHandle,
         internal: InternalHandle,
     ) -> Result<i8, Error> {
-        (self.library_link_library_fn)(self.base_module, handle, loader, internal)
+        (self.vtable.as_ref().library_link_library_fn)(self.base_module, handle, loader, internal)
     }
 
     #[inline]
@@ -518,21 +515,21 @@ impl LibraryBinding for CBaseInterface {
         &self,
         handle: LibraryHandle,
     ) -> Result<InternalHandle, Error> {
-        (self.library_get_internal_library_handle_fn)(self.base_module, handle)
+        (self.vtable.as_ref().library_get_internal_library_handle_fn)(self.base_module, handle)
     }
 
     #[inline]
     unsafe fn load(
         &mut self,
         loader: LoaderHandle,
-        path: NonNullConst<OSPathChar>,
+        path: OSPathString,
     ) -> Result<LibraryHandle, Error> {
-        (self.library_load_fn)(self.base_module, loader, path)
+        (self.vtable.as_ref().library_load_fn)(self.base_module, loader, path)
     }
 
     #[inline]
     unsafe fn unload(&mut self, handle: LibraryHandle) -> Result<i8, Error> {
-        (self.library_unload_fn)(self.base_module, handle)
+        (self.vtable.as_ref().library_unload_fn)(self.base_module, handle)
     }
 
     #[inline]
@@ -541,7 +538,7 @@ impl LibraryBinding for CBaseInterface {
         handle: LibraryHandle,
         symbol: NonNullConst<u8>,
     ) -> Result<Symbol<NonNullConst<c_void>>, Error> {
-        (self.library_get_data_symbol_fn)(self.base_module, handle, symbol)
+        (self.vtable.as_ref().library_get_data_symbol_fn)(self.base_module, handle, symbol)
     }
 
     #[inline]
@@ -550,6 +547,6 @@ impl LibraryBinding for CBaseInterface {
         handle: LibraryHandle,
         symbol: NonNullConst<u8>,
     ) -> Result<Symbol<CBaseFn>, Error> {
-        (self.library_get_function_symbol_fn)(self.base_module, handle, symbol)
+        (self.vtable.as_ref().library_get_function_symbol_fn)(self.base_module, handle, symbol)
     }
 }

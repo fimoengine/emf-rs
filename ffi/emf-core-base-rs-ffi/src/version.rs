@@ -16,7 +16,7 @@
 //!     let v2_string = ConstSpan::from("1.2.3-beta.5+54845652");
 //!     let v2 = match VersionBinding::from_string(
 //!                     base_interface,
-//!                     NonNullConst::from(&v2_string)
+//!                     v2_string
 //!                     ).into_rust() {
 //!         Ok(v) => v,
 //!         Err(e) => {

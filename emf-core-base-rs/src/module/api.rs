@@ -1,6 +1,6 @@
 use crate::ffi::collections::{MutSpan, NonNullConst};
 use crate::ffi::errors::SimpleError;
-use crate::ffi::library::OSPathChar;
+use crate::ffi::library::{OSPathChar, OSPathString};
 use crate::ffi::module::api::ModuleBinding;
 use crate::ffi::Bool;
 use crate::module::module_loader::{ModuleLoader, ModuleLoaderABICompat, ModuleLoaderAPI};
@@ -14,7 +14,6 @@ use crate::ownership::{
 use crate::Error;
 use crate::ToOsPathBuff;
 use std::path::Path;
-use std::ptr::NonNull;
 
 const MODULE_TYPE_LENGTH_ERROR: &str = "Module type too long";
 
@@ -37,7 +36,7 @@ pub trait ModuleAPI<'interface> {
         mod_type: impl AsRef<str>,
     ) -> Result<Loader<'interface, Owned>, Error<Owned>>
     where
-        L: ModuleLoaderAPI<'static>,
+        L: ModuleLoaderAPI<'static> + ModuleLoaderABICompat,
         ModuleLoader<L, Owned>: From<&'loader LT>;
 
     /// Unregisters an existing module loader.
@@ -63,7 +62,7 @@ pub trait ModuleAPI<'interface> {
     ///
     /// Interface on success, error otherwise.
     fn get_loader_interface<'loader, O, L>(
-        &mut self,
+        &self,
         loader: &Loader<'loader, O>,
     ) -> Result<ModuleLoader<L, O>, Error<Owned>>
     where
@@ -527,7 +526,7 @@ where
         mod_type: impl AsRef<str>,
     ) -> Result<Loader<'interface, Owned>, Error<Owned>>
     where
-        L: ModuleLoaderAPI<'static>,
+        L: ModuleLoaderAPI<'static> + ModuleLoaderABICompat,
         ModuleLoader<L, Owned>: From<&'loader LT>,
     {
         let mod_str = mod_type.as_ref();
@@ -542,7 +541,7 @@ where
 
         unsafe {
             self.register_loader(
-                ModuleLoader::<L, Owned>::from(loader).to_interface(),
+                ModuleLoader::<L, Owned>::from(loader).to_raw(),
                 NonNullConst::from(&mod_type),
             )
             .into_rust()
@@ -561,7 +560,7 @@ where
 
     #[inline]
     fn get_loader_interface<'loader, O, L>(
-        &mut self,
+        &self,
         loader: &Loader<'loader, O>,
     ) -> Result<ModuleLoader<L, O>, Error<Owned>>
     where
@@ -571,10 +570,7 @@ where
         unsafe {
             self.get_loader_interface(loader.as_handle())
                 .into_rust()
-                .map_or_else(
-                    |e| Err(Error::from(e)),
-                    |v| Ok(ModuleLoader::from_interface(v)),
-                )
+                .map_or_else(|e| Err(Error::from(e)), |v| Ok(ModuleLoader::from_raw(v)))
         }
     }
 
@@ -661,7 +657,7 @@ where
     #[inline]
     fn get_modules(&self, mut buffer: impl AsMut<[ModuleInfo]>) -> Result<usize, Error<Owned>> {
         unsafe {
-            self.get_modules(NonNull::from(&MutSpan::from(buffer.as_mut())))
+            self.get_modules(MutSpan::from(buffer.as_mut()))
                 .into_rust()
                 .map_err(Error::from)
         }
@@ -673,7 +669,7 @@ where
         mut buffer: impl AsMut<[ModuleType]>,
     ) -> Result<usize, Error<Owned>> {
         unsafe {
-            self.get_module_types(NonNull::from(&MutSpan::from(buffer.as_mut())))
+            self.get_module_types(MutSpan::from(buffer.as_mut()))
                 .into_rust()
                 .map_err(Error::from)
         }
@@ -685,7 +681,7 @@ where
         mut buffer: impl AsMut<[InterfaceDescriptor]>,
     ) -> Result<usize, Error<Owned>> {
         unsafe {
-            self.get_exported_interfaces(NonNull::from(&MutSpan::from(buffer.as_mut())))
+            self.get_exported_interfaces(MutSpan::from(buffer.as_mut()))
                 .into_rust()
                 .map_err(Error::from)
         }
@@ -762,7 +758,7 @@ where
     {
         let path_buff = path.as_ref().to_os_path_buff_null();
         unsafe {
-            self.add_module(loader.as_handle(), NonNullConst::from(path_buff.as_slice()))
+            self.add_module(loader.as_handle(), OSPathString::from(path_buff.as_slice()))
                 .into_rust()
                 .map_or_else(|e| Err(Error::from(e)), |v| Ok(Module::new(v)))
         }
@@ -971,12 +967,8 @@ where
                 .map_or_else(
                     |e| Err(Error::from(e)),
                     |v| {
-                        let mut end = v.as_ptr();
-                        while *end != 0 {
-                            end = end.offset(1);
-                        }
-                        let length = 1 + end.offset_from(v.as_ptr()) as usize;
-                        Ok(std::slice::from_raw_parts(v.as_ptr(), length))
+                        let slice = v.as_ref();
+                        Ok(std::slice::from_raw_parts(slice.as_ptr(), slice.len()))
                     },
                 )
         }

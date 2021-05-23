@@ -42,7 +42,7 @@ pub type NewFullFn = TypeWrapper<
 pub type FromStringFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
-        buffer: NonNullConst<ConstSpan<u8>>,
+        buffer: ConstSpan<u8>,
     ) -> Result<Version, Error>,
 >;
 
@@ -71,7 +71,7 @@ pub type AsStringShortFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
         version: NonNullConst<Version>,
-        buffer: NonNull<MutSpan<u8>>,
+        buffer: MutSpan<u8>,
     ) -> Result<usize, Error>,
 >;
 
@@ -79,7 +79,7 @@ pub type AsStringLongFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
         version: NonNullConst<Version>,
-        buffer: NonNull<MutSpan<u8>>,
+        buffer: MutSpan<u8>,
     ) -> Result<usize, Error>,
 >;
 
@@ -87,14 +87,14 @@ pub type AsStringFullFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
         version: NonNullConst<Version>,
-        buffer: NonNull<MutSpan<u8>>,
+        buffer: MutSpan<u8>,
     ) -> Result<usize, Error>,
 >;
 
 pub type StringIsValidFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
-        version_string: NonNullConst<ConstSpan<u8>>,
+        version_string: ConstSpan<u8>,
     ) -> Bool,
 >;
 
@@ -201,7 +201,7 @@ pub trait VersionBinding {
     /// # Safety
     ///
     /// The function crosses the ffi boundary.
-    unsafe fn from_string(&self, buffer: NonNullConst<ConstSpan<u8>>) -> Result<Version, Error>;
+    unsafe fn from_string(&self, buffer: ConstSpan<u8>) -> Result<Version, Error>;
 
     /// Computes the length of the short version string.
     ///
@@ -252,7 +252,7 @@ pub trait VersionBinding {
     unsafe fn as_string_short(
         &self,
         version: NonNullConst<Version>,
-        buffer: NonNull<MutSpan<u8>>,
+        buffer: MutSpan<u8>,
     ) -> Result<usize, Error>;
 
     /// Represents the version as a long string.
@@ -271,7 +271,7 @@ pub trait VersionBinding {
     unsafe fn as_string_long(
         &self,
         version: NonNullConst<Version>,
-        buffer: NonNull<MutSpan<u8>>,
+        buffer: MutSpan<u8>,
     ) -> Result<usize, Error>;
 
     /// Represents the version as a full string.
@@ -290,7 +290,7 @@ pub trait VersionBinding {
     unsafe fn as_string_full(
         &self,
         version: NonNullConst<Version>,
-        buffer: NonNull<MutSpan<u8>>,
+        buffer: MutSpan<u8>,
     ) -> Result<usize, Error>;
 
     /// Checks whether the version string is valid.
@@ -302,7 +302,7 @@ pub trait VersionBinding {
     /// # Safety
     ///
     /// The function crosses the ffi boundary.
-    unsafe fn string_is_valid(&self, version_string: NonNullConst<ConstSpan<u8>>) -> Bool;
+    unsafe fn string_is_valid(&self, version_string: ConstSpan<u8>) -> Bool;
 
     /// Compares two versions.
     ///
@@ -368,7 +368,7 @@ pub trait VersionBinding {
 impl VersionBinding for CBaseInterface {
     #[inline]
     unsafe fn new_short(&self, major: i32, minor: i32, patch: i32) -> Version {
-        (self.version_new_short_fn)(self.base_module, major, minor, patch)
+        (self.vtable.as_ref().version_new_short_fn)(self.base_module, major, minor, patch)
     }
 
     #[inline]
@@ -380,7 +380,7 @@ impl VersionBinding for CBaseInterface {
         release_type: ReleaseType,
         release_number: i8,
     ) -> Version {
-        (self.version_new_long_fn)(
+        (self.vtable.as_ref().version_new_long_fn)(
             self.base_module,
             major,
             minor,
@@ -400,7 +400,7 @@ impl VersionBinding for CBaseInterface {
         release_number: i8,
         build: i64,
     ) -> Version {
-        (self.version_new_full_fn)(
+        (self.vtable.as_ref().version_new_full_fn)(
             self.base_module,
             major,
             minor,
@@ -412,74 +412,74 @@ impl VersionBinding for CBaseInterface {
     }
 
     #[inline]
-    unsafe fn from_string(&self, buffer: NonNullConst<ConstSpan<u8>>) -> Result<Version, Error> {
-        (self.version_from_string_fn)(self.base_module, buffer)
+    unsafe fn from_string(&self, buffer: ConstSpan<u8>) -> Result<Version, Error> {
+        (self.vtable.as_ref().version_from_string_fn)(self.base_module, buffer)
     }
 
     #[inline]
     unsafe fn string_length_short(&self, version: NonNullConst<Version>) -> usize {
-        (self.version_string_length_short_fn)(self.base_module, version)
+        (self.vtable.as_ref().version_string_length_short_fn)(self.base_module, version)
     }
 
     #[inline]
     unsafe fn string_length_long(&self, version: NonNullConst<Version>) -> usize {
-        (self.version_string_length_long_fn)(self.base_module, version)
+        (self.vtable.as_ref().version_string_length_long_fn)(self.base_module, version)
     }
 
     #[inline]
     unsafe fn string_length_full(&self, version: NonNullConst<Version>) -> usize {
-        (self.version_string_length_full_fn)(self.base_module, version)
+        (self.vtable.as_ref().version_string_length_full_fn)(self.base_module, version)
     }
 
     #[inline]
     unsafe fn as_string_short(
         &self,
         version: NonNullConst<Version>,
-        buffer: NonNull<MutSpan<u8>>,
+        buffer: MutSpan<u8>,
     ) -> Result<usize, Error> {
-        (self.version_as_string_short_fn)(self.base_module, version, buffer)
+        (self.vtable.as_ref().version_as_string_short_fn)(self.base_module, version, buffer)
     }
 
     #[inline]
     unsafe fn as_string_long(
         &self,
         version: NonNullConst<Version>,
-        buffer: NonNull<MutSpan<u8>>,
+        buffer: MutSpan<u8>,
     ) -> Result<usize, Error> {
-        (self.version_as_string_long_fn)(self.base_module, version, buffer)
+        (self.vtable.as_ref().version_as_string_long_fn)(self.base_module, version, buffer)
     }
 
     #[inline]
     unsafe fn as_string_full(
         &self,
         version: NonNullConst<Version>,
-        buffer: NonNull<MutSpan<u8>>,
+        buffer: MutSpan<u8>,
     ) -> Result<usize, Error> {
-        (self.version_as_string_full_fn)(self.base_module, version, buffer)
+        (self.vtable.as_ref().version_as_string_full_fn)(self.base_module, version, buffer)
     }
 
     #[inline]
-    unsafe fn string_is_valid(&self, version_string: NonNullConst<ConstSpan<u8>>) -> Bool {
-        (self.version_string_is_valid_fn)(self.base_module, version_string)
+    unsafe fn string_is_valid(&self, version_string: ConstSpan<u8>) -> Bool {
+        (self.vtable.as_ref().version_string_is_valid_fn)(self.base_module, version_string)
     }
 
     #[inline]
     unsafe fn compare(&self, lhs: NonNullConst<Version>, rhs: NonNullConst<Version>) -> i32 {
-        (self.version_compare_fn)(self.base_module, lhs, rhs)
+        (self.vtable.as_ref().version_compare_fn)(self.base_module, lhs, rhs)
     }
 
     #[inline]
     unsafe fn compare_weak(&self, lhs: NonNullConst<Version>, rhs: NonNullConst<Version>) -> i32 {
-        (self.version_compare_weak_fn)(self.base_module, lhs, rhs)
+        (self.vtable.as_ref().version_compare_weak_fn)(self.base_module, lhs, rhs)
     }
 
     #[inline]
     unsafe fn compare_strong(&self, lhs: NonNullConst<Version>, rhs: NonNullConst<Version>) -> i32 {
-        (self.version_compare_strong_fn)(self.base_module, lhs, rhs)
+        (self.vtable.as_ref().version_compare_strong_fn)(self.base_module, lhs, rhs)
     }
 
     #[inline]
     unsafe fn is_compatible(&self, lhs: NonNullConst<Version>, rhs: NonNullConst<Version>) -> Bool {
-        (self.version_is_compatible_fn)(self.base_module, lhs, rhs)
+        (self.vtable.as_ref().version_is_compatible_fn)(self.base_module, lhs, rhs)
     }
 }

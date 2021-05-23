@@ -2,7 +2,6 @@
 //!
 //! The global api is the preferred way of interfacing with the interface.
 use crate::ffi::{
-    collections::NonNullConst,
     sys::api::{GetFunctionFn as GetFunctionFnFFI, SysBinding},
     Bool, CBase as CBaseFFI,
 };
@@ -134,9 +133,9 @@ impl<T> LockToken<T> {
 #[inline]
 pub fn initialize(base_module: Option<NonNull<CBaseFFI>>, get_function_fn: GetFunctionFnFFI) {
     unsafe {
-        INTERFACE = MaybeUninit::new(CBaseRef::new(NonNullConst::from(
-            CBase::fetch_interface(base_module, get_function_fn).internal_interface(),
-        )));
+        INTERFACE = MaybeUninit::new(CBaseRef::new(
+            *CBase::fetch_interface(base_module, get_function_fn).internal_interface(),
+        ));
     }
 
     #[cfg(feature = "unwind_internal")]

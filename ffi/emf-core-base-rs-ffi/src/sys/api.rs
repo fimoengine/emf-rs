@@ -1,7 +1,7 @@
 //! Sys api.
 //!
 //! The sys api is exposed by the [SysBinding] trait.
-use crate::collections::{NonNullConst, Optional};
+use crate::collections::Optional;
 use crate::errors::Error;
 use crate::sys::sync_handler::SyncHandlerInterface;
 use crate::{Bool, CBase, CBaseFn, CBaseInterface, FnId, TypeWrapper};
@@ -29,15 +29,13 @@ pub type TryLockFn =
 pub type UnlockFn = TypeWrapper<unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>)>;
 
 pub type GetSyncHandlerFn = TypeWrapper<
-    unsafe extern "C-unwind" fn(
-        base_module: Option<NonNull<CBase>>,
-    ) -> NonNullConst<SyncHandlerInterface>,
+    unsafe extern "C-unwind" fn(base_module: Option<NonNull<CBase>>) -> SyncHandlerInterface,
 >;
 
 pub type SetSyncHandlerFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
-        handler: Option<NonNullConst<SyncHandlerInterface>>,
+        handler: Optional<SyncHandlerInterface>,
     ),
 >;
 
@@ -119,11 +117,11 @@ pub trait SysBinding {
     /// # Safety
     ///
     /// The function is not thread-safe and crosses the ffi boundary.
-    unsafe fn get_sync_handler(&self) -> NonNullConst<SyncHandlerInterface>;
+    unsafe fn get_sync_handler(&self) -> SyncHandlerInterface;
 
     /// Sets a new synchronization handler.
     ///
-    /// The default synchronization handler is used, if `handler` is [Option::None].
+    /// The default synchronization handler is used, if `handler` is [Optional::None].
     ///
     /// # Uses
     ///
@@ -146,52 +144,52 @@ pub trait SysBinding {
     /// # Safety
     ///
     /// The function is not thread-safe and crosses the ffi boundary.
-    unsafe fn set_sync_handler(&mut self, handler: Option<NonNullConst<SyncHandlerInterface>>);
+    unsafe fn set_sync_handler(&mut self, handler: Optional<SyncHandlerInterface>);
 }
 
 impl SysBinding for CBaseInterface {
     #[inline]
     unsafe fn shutdown(&mut self) -> ! {
-        (self.sys_shutdown_fn)(self.base_module)
+        (self.vtable.as_ref().sys_shutdown_fn)(self.base_module)
     }
 
     #[inline]
     unsafe fn panic(&self, error: Optional<Error>) -> ! {
-        (self.sys_panic_fn)(self.base_module, error)
+        (self.vtable.as_ref().sys_panic_fn)(self.base_module, error)
     }
 
     #[inline]
     unsafe fn has_function(&self, id: FnId) -> Bool {
-        (self.sys_has_function_fn)(self.base_module, id)
+        (self.vtable.as_ref().sys_has_function_fn)(self.base_module, id)
     }
 
     #[inline]
     unsafe fn get_function(&self, id: FnId) -> Optional<CBaseFn> {
-        (self.sys_get_function_fn)(self.base_module, id)
+        (self.vtable.as_ref().sys_get_function_fn)(self.base_module, id)
     }
 
     #[inline]
     unsafe fn lock(&self) {
-        (self.sys_lock_fn)(self.base_module)
+        (self.vtable.as_ref().sys_lock_fn)(self.base_module)
     }
 
     #[inline]
     unsafe fn try_lock(&self) -> Bool {
-        (self.sys_try_lock_fn)(self.base_module)
+        (self.vtable.as_ref().sys_try_lock_fn)(self.base_module)
     }
 
     #[inline]
     unsafe fn unlock(&self) {
-        (self.sys_unlock_fn)(self.base_module)
+        (self.vtable.as_ref().sys_unlock_fn)(self.base_module)
     }
 
     #[inline]
-    unsafe fn get_sync_handler(&self) -> NonNullConst<SyncHandlerInterface> {
-        (self.sys_get_sync_handler_fn)(self.base_module)
+    unsafe fn get_sync_handler(&self) -> SyncHandlerInterface {
+        (self.vtable.as_ref().sys_get_sync_handler_fn)(self.base_module)
     }
 
     #[inline]
-    unsafe fn set_sync_handler(&mut self, handler: Option<NonNullConst<SyncHandlerInterface>>) {
-        (self.sys_set_sync_handler_fn)(self.base_module, handler)
+    unsafe fn set_sync_handler(&mut self, handler: Optional<SyncHandlerInterface>) {
+        (self.vtable.as_ref().sys_set_sync_handler_fn)(self.base_module, handler)
     }
 }

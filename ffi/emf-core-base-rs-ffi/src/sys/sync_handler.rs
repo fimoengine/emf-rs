@@ -1,6 +1,7 @@
 //! Interface of a sync handler
 //!
 //! Any object that can be wrapped into a [SyncHandlerInterface] can be used as a sync handler.
+use crate::collections::NonNullConst;
 use crate::{Bool, TypeWrapper};
 use std::ptr::NonNull;
 
@@ -15,14 +16,21 @@ pub type TryLockFn =
     TypeWrapper<unsafe extern "C-unwind" fn(handler: Option<NonNull<SyncHandler>>) -> Bool>;
 pub type UnlockFn = TypeWrapper<unsafe extern "C-unwind" fn(handler: Option<NonNull<SyncHandler>>)>;
 
+/// VTable of a sync handler.
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+pub struct SyncHandlerVTable {
+    pub lock_fn: LockFn,
+    pub try_lock_fn: TryLockFn,
+    pub unlock_fn: UnlockFn,
+}
+
 /// Interface of a sync handler.
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct SyncHandlerInterface {
     pub handler: Option<NonNull<SyncHandler>>,
-    pub lock_fn: LockFn,
-    pub try_lock_fn: TryLockFn,
-    pub unlock_fn: UnlockFn,
+    pub vtable: NonNullConst<SyncHandlerVTable>,
 }
 
 unsafe impl Send for SyncHandlerInterface {}
@@ -71,16 +79,16 @@ pub trait SyncHandlerBinding {
 impl SyncHandlerBinding for SyncHandlerInterface {
     #[inline]
     unsafe fn lock(&self) {
-        (self.lock_fn)(self.handler)
+        (self.vtable.as_ref().lock_fn)(self.handler)
     }
 
     #[inline]
     unsafe fn try_lock(&self) -> Bool {
-        (self.try_lock_fn)(self.handler)
+        (self.vtable.as_ref().try_lock_fn)(self.handler)
     }
 
     #[inline]
     unsafe fn unlock(&self) {
-        (self.unlock_fn)(self.handler)
+        (self.vtable.as_ref().unlock_fn)(self.handler)
     }
 }

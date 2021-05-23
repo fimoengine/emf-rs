@@ -26,7 +26,7 @@ pub trait CBaseLoader {
     unsafe fn fetch_interface(
         base_module: Option<NonNull<CBase>>,
         get_function_fn: sys_api::GetFunctionFn,
-    ) -> NonNullConst<Self::Interface>;
+    ) -> Self::Interface;
 }
 
 impl CBaseLoader for CBaseInterface {
@@ -35,7 +35,7 @@ impl CBaseLoader for CBaseInterface {
     unsafe fn fetch_interface(
         base_module: Option<NonNull<CBase>>,
         get_function_fn: sys_api::GetFunctionFn,
-    ) -> NonNullConst<Self::Interface> {
+    ) -> Self::Interface {
         let panic_fn: sys_api::PanicFn = match get_function_fn(base_module, FnId::SysPanic) {
             Optional::None => panic!("Unable to fetch the interface"),
             Optional::Some(func) => std::mem::transmute(func),
@@ -87,7 +87,7 @@ impl CBaseLoader for CBaseInterface {
             module_handle,
             NonNullConst::from(&cbase_interface_desc),
         ) {
-            Result::Ok(interface) => NonNullConst::from(interface.interface).cast(),
+            Result::Ok(interface) => *interface.interface.cast::<Self::Interface>().as_ref(),
             Result::Err(e) => panic_fn(base_module, Optional::Some(e)),
         }
     }

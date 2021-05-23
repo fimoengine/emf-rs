@@ -8,19 +8,19 @@
 //! use emf_core_base_rs_ffi::sys::api::SysBinding;
 //! use emf_core_base_rs_ffi::library::api::LibraryBinding;
 //! use emf_core_base_rs_ffi::collections::{NonNullConst, Optional};
-//! use emf_core_base_rs_ffi::library::{OSPathChar, DEFAULT_HANDLE, LibraryHandle};
+//! use emf_core_base_rs_ffi::library::{OSPathString, DEFAULT_HANDLE, LibraryHandle};
 //!
 //! unsafe {
 //!     // `base_interface` has the type `&mut dyn CBaseBinding`.
 //!     SysBinding::lock(base_interface);
 //!
 //!     // Path of the library. Platform dependent initialisation.
-//!     let lib_path: &OSPathChar = unsafe { std::mem::MaybeUninit::uninit().assume_init() };
+//!     let lib_path = OSPathString::new();
 //!
 //!     let handle = match LibraryBinding::load(
 //!             base_interface,
 //!             DEFAULT_HANDLE,
-//!             NonNullConst::from(lib_path)
+//!             lib_path
 //!             ).into_rust() {
 //!         Ok(handle) => handle,
 //!         Err(e) => {
@@ -54,7 +54,7 @@
 //!     SysBinding::unlock(base_interface);
 //! }
 //! ```
-use crate::collections::StaticVec;
+use crate::collections::{ConstSpan, StaticVec};
 use std::fmt::{Display, Formatter};
 
 pub mod api;
@@ -100,6 +100,9 @@ pub type OSPathChar = OSPathCharUnix;
 /// Character type of a path.
 #[cfg(windows)]
 pub type OSPathChar = OSPathCharWindows;
+
+/// Path string.
+pub type OSPathString = ConstSpan<OSPathChar>;
 
 /// Handle to a library.
 #[repr(C)]

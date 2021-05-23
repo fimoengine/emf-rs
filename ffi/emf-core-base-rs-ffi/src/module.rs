@@ -8,7 +8,7 @@
 //! use emf_core_base_rs_ffi::sys::api::SysBinding;
 //! use emf_core_base_rs_ffi::version::api::VersionBinding;
 //! use emf_core_base_rs_ffi::module::api::ModuleBinding;
-//! use emf_core_base_rs_ffi::library::OSPathChar;
+//! use emf_core_base_rs_ffi::library::OSPathString;
 //! use emf_core_base_rs_ffi::collections::{NonNullConst, ConstSpan, Optional};
 //! use emf_core_base_rs_ffi::module::{MODULE_LOADER_DEFAULT_HANDLE,
 //!     InterfaceDescriptor, InterfaceName};
@@ -18,12 +18,12 @@
 //!     SysBinding::lock(base_interface);
 //!
 //!     // Path of the module. Platform dependent initialisation.
-//!     let mod_path: OSPathChar = unsafe { std::mem::MaybeUninit::uninit().assume_init() };
+//!     let mod_path = OSPathString::new();
 //!
 //!     let handle = match ModuleBinding::add_module(
 //!                     base_interface,
 //!                     MODULE_LOADER_DEFAULT_HANDLE,
-//!                     NonNullConst::from(&mod_path)
+//!                     mod_path
 //!                     ).into_rust() {
 //!         Ok(handle) => handle,
 //!         Err(e) => {

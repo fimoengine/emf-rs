@@ -1,12 +1,13 @@
 //! API of a sync handler.
-use crate::ffi::collections::NonNullConst;
 use crate::ffi::sys::sync_handler::{SyncHandlerBinding, SyncHandlerInterface};
 use crate::ffi::Bool;
+use std::marker::PhantomData;
 
 /// A borrowed sync handler.
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct SyncHandler<'a> {
-    handler: &'a SyncHandlerInterface,
+    handler: SyncHandlerInterface,
+    phantom: PhantomData<&'a ()>,
 }
 
 /// The API of a sync handler.
@@ -15,14 +16,14 @@ pub trait SyncHandlerAPI<'a> {
     type Handler;
 
     /// Fetches a pointer that can be used with the interface.
-    fn to_interface(&self) -> NonNullConst<SyncHandlerInterface>;
+    fn to_raw(&self) -> SyncHandlerInterface;
 
     /// Construct a new instance with the pointer.
     ///
     /// # Safety
     ///
     /// This function should not be used directly.
-    unsafe fn from_interface(handler: NonNullConst<SyncHandlerInterface>) -> Self::Handler;
+    unsafe fn from_raw(handler: SyncHandlerInterface) -> Self::Handler;
 
     /// Locks the synchronisation handler.
     ///
@@ -66,14 +67,15 @@ impl SyncHandlerAPI<'_> for SyncHandler<'_> {
     type Handler = Self;
 
     #[inline]
-    fn to_interface(&self) -> NonNullConst<SyncHandlerInterface> {
-        NonNullConst::from(self.handler)
+    fn to_raw(&self) -> SyncHandlerInterface {
+        self.handler
     }
 
     #[inline]
-    unsafe fn from_interface(handler: NonNullConst<SyncHandlerInterface>) -> Self::Handler {
+    unsafe fn from_raw(handler: SyncHandlerInterface) -> Self::Handler {
         Self {
-            handler: &*handler.as_ptr(),
+            handler,
+            phantom: PhantomData,
         }
     }
 

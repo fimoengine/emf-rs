@@ -17,6 +17,7 @@ pub use emf_core_base_rs_ffi as ffi;
 
 mod cbase;
 mod error;
+mod fat_ptr;
 mod to_os_path_buff;
 
 #[cfg(feature = "init")]
