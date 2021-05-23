@@ -26,7 +26,9 @@ pub mod module;
 pub mod sys;
 pub mod version;
 pub use boolean::Bool;
-pub use cbase::{CBase, CBaseBinding, CBaseFn, CBaseInterface, CBASE_INTERFACE_NAME};
+pub use cbase::{
+    CBase, CBaseBinding, CBaseFn, CBaseInterface, CBaseInterfaceVTable, CBASE_INTERFACE_NAME,
+};
 pub use fn_id::FnId;
 pub use type_wrapper::TypeWrapper;
 

@@ -6,7 +6,9 @@ use std::ptr::NonNull;
 
 /// Fat pointer layout.
 pub struct FatPtr<T, VTable> {
+    /// Data pointer.
     pub data: Option<NonNull<T>>,
+    /// VTable pointer.
     pub vtable: NonNullConst<VTable>,
 }
 
