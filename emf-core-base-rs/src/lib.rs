@@ -38,5 +38,6 @@ pub mod extensions;
 
 pub use cbase::{CBase, CBaseAPI, CBaseAccess, CBaseInterfaceInfo, CBaseRef};
 pub use error::{Error, ErrorInfo};
+pub use fat_ptr::FatPtr;
 pub use init::CBaseAPILoader;
 pub use to_os_path_buff::ToOsPathBuff;
