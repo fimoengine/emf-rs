@@ -39,6 +39,7 @@ use crate::ownership::{
 };
 use crate::Error;
 use std::path::Path;
+use std::pin::Pin;
 
 /// Registers a new module loader.
 ///
@@ -52,14 +53,14 @@ use std::path::Path;
 ///
 /// Handle on success, error otherwise.
 #[inline]
-pub fn register_loader<'loader, LT, L, T>(
+pub fn register_loader<LT, L, T>(
     _token: &mut LockToken<T>,
-    loader: &'loader LT,
+    loader: Pin<&'static LT>,
     mod_type: impl AsRef<str>,
 ) -> Result<Loader<'static, Owned>, Error<Owned>>
 where
     L: ModuleLoaderAPI<'static> + ModuleLoaderABICompat,
-    ModuleLoader<L, Owned>: From<&'loader LT>,
+    ModuleLoader<L, Owned>: From<&'static LT>,
 {
     ModuleAPI::register_loader(get_mut_interface(), loader, mod_type)
 }

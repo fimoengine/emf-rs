@@ -14,6 +14,7 @@ use crate::ownership::{
 use crate::Error;
 use crate::ToOsPathBuff;
 use std::path::Path;
+use std::pin::Pin;
 
 const MODULE_TYPE_LENGTH_ERROR: &str = "Module type too long";
 
@@ -30,14 +31,14 @@ pub trait ModuleAPI<'interface> {
     /// # Return
     ///
     /// Handle on success, error otherwise.
-    fn register_loader<'loader, LT, L>(
+    fn register_loader<LT, L>(
         &mut self,
-        loader: &'loader LT,
+        loader: Pin<&'interface LT>,
         mod_type: impl AsRef<str>,
     ) -> Result<Loader<'interface, Owned>, Error<Owned>>
     where
-        L: ModuleLoaderAPI<'static> + ModuleLoaderABICompat,
-        ModuleLoader<L, Owned>: From<&'loader LT>;
+        L: ModuleLoaderAPI<'interface> + ModuleLoaderABICompat,
+        ModuleLoader<L, Owned>: From<&'interface LT>;
 
     /// Unregisters an existing module loader.
     ///
@@ -520,14 +521,14 @@ where
     T: ModuleBinding,
 {
     #[inline]
-    fn register_loader<'loader, LT, L>(
+    fn register_loader<LT, L>(
         &mut self,
-        loader: &'loader LT,
+        loader: Pin<&'interface LT>,
         mod_type: impl AsRef<str>,
     ) -> Result<Loader<'interface, Owned>, Error<Owned>>
     where
-        L: ModuleLoaderAPI<'static> + ModuleLoaderABICompat,
-        ModuleLoader<L, Owned>: From<&'loader LT>,
+        L: ModuleLoaderAPI<'interface> + ModuleLoaderABICompat,
+        ModuleLoader<L, Owned>: From<&'interface LT>,
     {
         let mod_str = mod_type.as_ref();
         if mod_str.as_bytes().len() > MODULE_LOADER_TYPE_MAX_LENGTH {
@@ -541,7 +542,7 @@ where
 
         unsafe {
             self.register_loader(
-                ModuleLoader::<L, Owned>::from(loader).to_raw(),
+                ModuleLoader::<L, Owned>::from(loader.get_ref()).to_raw(),
                 NonNullConst::from(&mod_type),
             )
             .into_rust()
