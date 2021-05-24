@@ -12,6 +12,7 @@ use crate::Error;
 use crate::ToOsPathBuff;
 use std::ffi::{c_void, CStr};
 use std::path::Path;
+use std::pin::Pin;
 
 /// Idiomatic library api.
 pub trait LibraryAPI<'interface> {
@@ -27,14 +28,14 @@ pub trait LibraryAPI<'interface> {
     /// # Return
     ///
     /// Handle on success, error otherwise.
-    fn register_loader<'loader, LT, L>(
+    fn register_loader<LT, L>(
         &mut self,
-        loader: &'loader LT,
+        loader: Pin<&'interface LT>,
         lib_type: impl AsRef<str>,
     ) -> Result<Loader<'interface, Owned>, Error<Owned>>
     where
-        L: LibraryLoaderAPI<'static> + LibraryLoaderABICompat,
-        LibraryLoader<L, Owned>: From<&'loader LT>;
+        L: LibraryLoaderAPI<'interface> + LibraryLoaderABICompat,
+        LibraryLoader<L, Owned>: From<&'interface LT>;
 
     /// Unregisters an existing loader.
     ///
@@ -282,14 +283,14 @@ where
     T: LibraryBinding,
 {
     #[inline]
-    fn register_loader<'loader, LT, L>(
+    fn register_loader<LT, L>(
         &mut self,
-        loader: &'loader LT,
+        loader: Pin<&'interface LT>,
         lib_type: impl AsRef<str>,
     ) -> Result<Loader<'interface, Owned>, Error<Owned>>
     where
-        L: LibraryLoaderAPI<'static> + LibraryLoaderABICompat,
-        LibraryLoader<L, Owned>: From<&'loader LT>,
+        L: LibraryLoaderAPI<'interface> + LibraryLoaderABICompat,
+        LibraryLoader<L, Owned>: From<&'interface LT>,
     {
         let lib_str = lib_type.as_ref();
         if lib_str.as_bytes().len() > LOADER_TYPE_MAX_LENGTH {
@@ -303,7 +304,7 @@ where
 
         unsafe {
             self.register_loader(
-                LibraryLoader::<L, Owned>::from(loader).to_raw(),
+                LibraryLoader::<L, Owned>::from(loader.get_ref()).to_raw(),
                 NonNullConst::from(&lib_type),
             )
             .into_rust()

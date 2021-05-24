@@ -38,6 +38,7 @@ use crate::ownership::{BorrowMutable, ImmutableAccessIdentifier, MutableAccessId
 use crate::Error;
 use std::ffi::{c_void, CStr};
 use std::path::Path;
+use std::pin::Pin;
 
 /// Registers a new loader.
 ///
@@ -52,14 +53,14 @@ use std::path::Path;
 ///
 /// Handle on success, error otherwise.
 #[inline]
-pub fn register_loader<'loader, L, LT, T>(
+pub fn register_loader<L, LT, T>(
     _token: &mut LockToken<L>,
-    loader: &'loader LT,
+    loader: Pin<&'static LT>,
     lib_type: impl AsRef<str>,
 ) -> Result<Loader<'static, Owned>, Error<Owned>>
 where
     T: LibraryLoaderAPI<'static> + LibraryLoaderABICompat,
-    LibraryLoader<T, Owned>: From<&'loader LT>,
+    LibraryLoader<T, Owned>: From<&'static LT>,
 {
     LibraryAPI::register_loader(get_mut_interface(), loader, lib_type)
 }
