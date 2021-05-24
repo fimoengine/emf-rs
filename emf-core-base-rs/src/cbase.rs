@@ -2,7 +2,7 @@ use crate::ffi::collections::{ConstSpan, MutSpan, NonNullConst, Optional, Result
 use crate::ffi::errors::Error;
 use crate::ffi::library::api::LibraryBinding;
 use crate::ffi::library::library_loader::LibraryLoaderInterface;
-use crate::ffi::library::OSPathString;
+use crate::ffi::library::{OSPathString, SymbolName};
 use crate::ffi::module;
 use crate::ffi::module::api::ModuleBinding;
 use crate::ffi::module::module_loader::ModuleLoaderInterface;
@@ -414,7 +414,7 @@ impl LibraryBinding for CBaseRef<'_> {
     unsafe fn get_data_symbol(
         &self,
         handle: library::LibraryHandle,
-        symbol: NonNullConst<u8>,
+        symbol: SymbolName,
     ) -> Result<library::Symbol<NonNullConst<c_void>>, Error> {
         LibraryBinding::get_data_symbol(&self._interface, handle, symbol)
     }
@@ -423,7 +423,7 @@ impl LibraryBinding for CBaseRef<'_> {
     unsafe fn get_function_symbol(
         &self,
         handle: library::LibraryHandle,
-        symbol: NonNullConst<u8>,
+        symbol: SymbolName,
     ) -> Result<library::Symbol<fn()>, Error> {
         LibraryBinding::get_function_symbol(&self._interface, handle, symbol)
     }

@@ -8,7 +8,7 @@
 //! use emf_core_base_rs_ffi::sys::api::SysBinding;
 //! use emf_core_base_rs_ffi::library::api::LibraryBinding;
 //! use emf_core_base_rs_ffi::collections::{NonNullConst, Optional};
-//! use emf_core_base_rs_ffi::library::{OSPathString, DEFAULT_HANDLE, LibraryHandle};
+//! use emf_core_base_rs_ffi::library::{OSPathString, SymbolName, DEFAULT_HANDLE, LibraryHandle};
 //!
 //! unsafe {
 //!     // `base_interface` has the type `&mut dyn CBaseBinding`.
@@ -32,7 +32,7 @@
 //!         match LibraryBinding::get_function_symbol(
 //!             base_interface,
 //!             handle,
-//!             NonNullConst::from(b"add_fn\0")
+//!             SymbolName::from(b"add_fn\0")
 //!             ).into_rust() {
 //!         Ok(sym) => {
 //!             std::mem::transmute(sym.symbol)
@@ -103,6 +103,9 @@ pub type OSPathChar = OSPathCharWindows;
 
 /// Path string.
 pub type OSPathString = ConstSpan<OSPathChar>;
+
+/// Symbol name string.
+pub type SymbolName = ConstSpan<u8>;
 
 /// Handle to a library.
 #[repr(C)]
