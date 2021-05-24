@@ -1,7 +1,7 @@
 use crate::ffi::collections::{MutSpan, NonNullConst};
 use crate::ffi::errors::SimpleError;
 use crate::ffi::library::api::LibraryBinding;
-use crate::ffi::library::OSPathString;
+use crate::ffi::library::{OSPathString, SymbolName};
 use crate::ffi::{Bool, CBaseFn};
 use crate::library::library_loader::{LibraryLoader, LibraryLoaderABICompat, LibraryLoaderAPI};
 use crate::library::{
@@ -504,7 +504,7 @@ where
         unsafe {
             self.get_data_symbol(
                 library.as_handle(),
-                NonNullConst::from(symbol.as_ref().to_bytes_with_nul()),
+                SymbolName::from(symbol.as_ref().to_bytes_with_nul()),
             )
             .into_rust()
             .map_or_else(
@@ -527,7 +527,7 @@ where
         unsafe {
             self.get_function_symbol(
                 library.as_handle(),
-                NonNullConst::from(symbol.as_ref().to_bytes_with_nul()),
+                SymbolName::from(symbol.as_ref().to_bytes_with_nul()),
             )
             .into_rust()
             .map_or_else(

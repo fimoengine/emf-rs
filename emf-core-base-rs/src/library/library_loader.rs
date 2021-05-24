@@ -5,7 +5,7 @@ use crate::ffi::library::library_loader::{
     LibraryLoader as LibraryLoaderFFI, LibraryLoaderBinding, LibraryLoaderInterface,
     NativeLibraryHandle, NativeLibraryLoaderInterface,
 };
-use crate::ffi::library::OSPathString;
+use crate::ffi::library::{OSPathString, SymbolName};
 use crate::ffi::CBaseFn;
 use crate::library::{InternalLibrary, Symbol};
 use crate::ownership::{
@@ -504,7 +504,7 @@ impl<'a> LibraryLoaderAPI<'a> for UnknownLoader<'a> {
         self._interface
             .get_data_symbol(
                 internal.borrow().as_handle(),
-                NonNullConst::from(symbol.as_ref().to_bytes_with_nul()),
+                SymbolName::from(symbol.as_ref().to_bytes_with_nul()),
             )
             .into_rust()
             .map_or_else(
@@ -526,7 +526,7 @@ impl<'a> LibraryLoaderAPI<'a> for UnknownLoader<'a> {
         self._interface
             .get_function_symbol(
                 internal.borrow().as_handle(),
-                NonNullConst::from(symbol.as_ref().to_bytes_with_nul()),
+                SymbolName::from(symbol.as_ref().to_bytes_with_nul()),
             )
             .into_rust()
             .map_or_else(

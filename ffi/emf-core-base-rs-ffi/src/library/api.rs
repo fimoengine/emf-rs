@@ -5,7 +5,7 @@ use crate::collections::{MutSpan, NonNullConst, Result};
 use crate::errors::Error;
 use crate::library::library_loader::LibraryLoaderInterface;
 use crate::library::{
-    InternalHandle, LibraryHandle, LibraryType, LoaderHandle, OSPathString, Symbol,
+    InternalHandle, LibraryHandle, LibraryType, LoaderHandle, OSPathString, Symbol, SymbolName,
 };
 use crate::{Bool, CBase, CBaseFn, CBaseInterface, TypeWrapper};
 use std::ffi::c_void;
@@ -113,7 +113,7 @@ pub type GetDataSymbolFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
         handle: LibraryHandle,
-        symbol: NonNullConst<u8>,
+        symbol: SymbolName,
     ) -> Result<Symbol<NonNullConst<c_void>>, Error>,
 >;
 
@@ -121,7 +121,7 @@ pub type GetFunctionSymbolFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         base_module: Option<NonNull<CBase>>,
         handle: LibraryHandle,
-        symbol: NonNullConst<u8>,
+        symbol: SymbolName,
     ) -> Result<Symbol<CBaseFn>, Error>,
 >;
 
@@ -400,7 +400,7 @@ pub trait LibraryBinding {
     unsafe fn get_data_symbol(
         &self,
         handle: LibraryHandle,
-        symbol: NonNullConst<u8>,
+        symbol: SymbolName,
     ) -> Result<Symbol<NonNullConst<c_void>>, Error>;
 
     /// Fetches a function symbol from a library.
@@ -424,7 +424,7 @@ pub trait LibraryBinding {
     unsafe fn get_function_symbol(
         &self,
         handle: LibraryHandle,
-        symbol: NonNullConst<u8>,
+        symbol: SymbolName,
     ) -> Result<Symbol<CBaseFn>, Error>;
 }
 
@@ -536,7 +536,7 @@ impl LibraryBinding for CBaseInterface {
     unsafe fn get_data_symbol(
         &self,
         handle: LibraryHandle,
-        symbol: NonNullConst<u8>,
+        symbol: SymbolName,
     ) -> Result<Symbol<NonNullConst<c_void>>, Error> {
         (self.vtable.as_ref().library_get_data_symbol_fn)(self.base_module, handle, symbol)
     }
@@ -545,7 +545,7 @@ impl LibraryBinding for CBaseInterface {
     unsafe fn get_function_symbol(
         &self,
         handle: LibraryHandle,
-        symbol: NonNullConst<u8>,
+        symbol: SymbolName,
     ) -> Result<Symbol<CBaseFn>, Error> {
         (self.vtable.as_ref().library_get_function_symbol_fn)(self.base_module, handle, symbol)
     }

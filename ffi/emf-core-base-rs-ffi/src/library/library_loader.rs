@@ -3,7 +3,7 @@
 //! Any object that can be wrapped into a [LibraryLoaderInterface] can be used as a library loader.
 use crate::collections::{NonNullConst, Result};
 use crate::errors::Error;
-use crate::library::{InternalHandle, OSPathString, Symbol};
+use crate::library::{InternalHandle, OSPathString, Symbol, SymbolName};
 use crate::{CBaseFn, TypeWrapper};
 use std::ffi::c_void;
 #[cfg(windows)]
@@ -34,7 +34,7 @@ pub type GetDataSymbolFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         loader: Option<NonNull<LibraryLoader>>,
         handle: InternalHandle,
-        name: NonNullConst<u8>,
+        name: SymbolName,
     ) -> Result<Symbol<NonNullConst<c_void>>, Error>,
 >;
 
@@ -42,7 +42,7 @@ pub type GetFnSymbolFn = TypeWrapper<
     unsafe extern "C-unwind" fn(
         loader: Option<NonNull<LibraryLoader>>,
         handle: InternalHandle,
-        name: NonNullConst<u8>,
+        name: SymbolName,
     ) -> Result<Symbol<CBaseFn>, Error>,
 >;
 
@@ -132,7 +132,7 @@ pub trait LibraryLoaderBinding {
     unsafe fn get_data_symbol(
         &self,
         handle: InternalHandle,
-        name: NonNullConst<u8>,
+        name: SymbolName,
     ) -> Result<Symbol<NonNullConst<c_void>>, Error>;
 
     /// Fetches a function symbol from a library.
@@ -158,7 +158,7 @@ pub trait LibraryLoaderBinding {
     unsafe fn get_function_symbol(
         &self,
         handle: InternalHandle,
-        name: NonNullConst<u8>,
+        name: SymbolName,
     ) -> Result<Symbol<CBaseFn>, Error>;
 
     /// Fetches a pointer to the extended loader vtable.
@@ -190,7 +190,7 @@ impl LibraryLoaderBinding for LibraryLoaderInterface {
     unsafe fn get_data_symbol(
         &self,
         handle: InternalHandle,
-        name: NonNullConst<u8>,
+        name: SymbolName,
     ) -> Result<Symbol<NonNullConst<c_void>>, Error> {
         (self.vtable.as_ref().get_data_symbol_fn)(self.loader, handle, name)
     }
@@ -199,7 +199,7 @@ impl LibraryLoaderBinding for LibraryLoaderInterface {
     unsafe fn get_function_symbol(
         &self,
         handle: InternalHandle,
-        name: NonNullConst<u8>,
+        name: SymbolName,
     ) -> Result<Symbol<CBaseFn>, Error> {
         (self.vtable.as_ref().get_function_symbol_fn)(self.loader, handle, name)
     }
@@ -384,7 +384,7 @@ impl LibraryLoaderBinding for NativeLibraryLoaderInterface {
     unsafe fn get_data_symbol(
         &self,
         handle: InternalHandle,
-        name: NonNullConst<u8>,
+        name: SymbolName,
     ) -> Result<Symbol<NonNullConst<c_void>>, Error> {
         (self
             .vtable
@@ -398,7 +398,7 @@ impl LibraryLoaderBinding for NativeLibraryLoaderInterface {
     unsafe fn get_function_symbol(
         &self,
         handle: InternalHandle,
-        name: NonNullConst<u8>,
+        name: SymbolName,
     ) -> Result<Symbol<CBaseFn>, Error> {
         (self
             .vtable
